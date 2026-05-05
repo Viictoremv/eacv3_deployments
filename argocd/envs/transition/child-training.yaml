@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: child-transition
+  namespace: argocd
+spec:
+  project: transition
+  source:
+    repoURL: git@github.com:Early-Access-Care-LLC/easv3_deployments.git
+    targetRevision: main
+    path: apps/child/helm-chart
+    helm:
+      valueFiles:
+        - values.transition.yaml   # <-- this file must live in the chart root
+  destination:
+    server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
+    namespace: child-transition
+  syncPolicy:
+    # automated: {}           # leave empty for manual sync; remove if you want auto
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,62 @@
+{{- if .Values.ingress.enabled }}
+Welcome to the Early Access System v3 Parent app! 🎉
+
+Release:  {{ .Release.Name }}
+Chart:    {{ .Chart.Name }} v{{ .Chart.Version }}
+App Ver:  {{ .Chart.AppVersion }}
+
+─────────────────────────────────────────────
+🌐 Application URL
+─────────────────────────────────────────────
+{{- range .Values.ingress.hosts }}
+  - https://{{ .host }}
+{{- end }}
+
+TLS certificates are managed via cert-manager:
+  ClusterIssuer → {{ index .Values.ingress.annotations "cert-manager.io/cluster-issuer" }}
+
+─────────────────────────────────────────────
+🔍 How to check status
+─────────────────────────────────────────────
+Pods:
+  kubectl -n {{ .Release.Namespace }} get pods -l app={{ include "eas-app-v3-parent.name" . }}-web
+
+Ingress:
+  kubectl -n {{ .Release.Namespace }} get ingress {{ include "eas-app-v3-parent.fullname" . }}-ingress
+
+Certificate Secret:
+  kubectl -n {{ .Release.Namespace }} get secret {{ (index .Values.ingress.tls 0).secretName }}
+
+─────────────────────────────────────────────
+📦 Storage
+─────────────────────────────────────────────
+{{- if .Values.persistentVolume.web.enabled }}
+PVC created:
+  - {{ include "eas-app-v3-parent.fullname" . }}-web-pvc
+  - Class: {{ .Values.persistentVolume.web.storageClassName }}
+  - Size:  {{ .Values.persistentVolume.web.size | default "1Gi" }}
+{{- else }}
+No PersistentVolumeClaim created (ephemeral storage only).
+{{- end }}
+
+─────────────────────────────────────────────
+🔒 Network Policy
+─────────────────────────────────────────────
+Ingress:
+  - Allowed from kube-system, istio-system, and App Gateway subnet
+Egress:
+  - kube-dns (UDP/TCP 53)
+  - MySQL (TCP 3306)
+  - Additional external APIs if configured
+
+─────────────────────────────────────────────
+🚀 Next Steps
+─────────────────────────────────────────────
+- Sync this app via ArgoCD (if not auto-synced).
+- Verify HTTPS access works at the URLs above.
+- Tail pod logs for runtime issues:
+    kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "eas-app-v3-parent.fullname" . }}-web
+
+{{- else }}
+Ingress is disabled. To expose this app, set `ingress.enabled=true` in your values.yaml.
+{{- end }}

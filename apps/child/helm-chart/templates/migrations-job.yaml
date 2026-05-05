@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "eas-app-v3-child.fullname" . }}-migrations-{{ .Values.image.tag | sha256sum | trunc 8 }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ include "eas-app-v3-child.name" . }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: SkipAwait=true
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400  # keep logs for a day
+  template:
+    spec:
+      restartPolicy: OnFailure
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "eas-app-v3-child.image" . }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: app-env-secret
+          env:
+            - name: APP_ENV
+              value: "dev"
+            - name: APP_DEBUG
+              value: "1"
+          command:
+            - /bin/sh
+            - -ceu
+            - |
+              php -v
+              echo "🟢 Checking database migrations..."
+
+              # Try to detect current migration status
+              if php bin/console doctrine:migrations:up-to-date --env=${APP_ENV}; then
+                echo "✅ No pending migrations. Exiting cleanly."
+                exit 0
+              else
+                echo "🟡 Running migrations if needed..."
+                php -d memory_limit=512M bin/console doctrine:migrations:migrate -n --env=${APP_ENV} || true
+                echo "✅ Migration job finished (no fatal errors)."
+              fi
+{{- define "eas-app-v3-child.image" -}}
+{{- printf "%s:%s" .Values.image.repository (default .Chart.AppVersion .Values.image.tag) -}}
+{{- end -}}

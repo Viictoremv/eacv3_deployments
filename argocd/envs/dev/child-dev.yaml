@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: child-dev
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: |
+      easv3_child_web=docker.io/earlyaccesscare/easv3_child_web
+    argocd-image-updater.argoproj.io/easv3_child_web.update-strategy: latest
+    argocd-image-updater.argoproj.io/easv3_child_web.allow-tags: regexp:^sha-[0-9a-f]{7,}$
+    argocd-image-updater.argoproj.io/easv3_child_web.force-update: "true"
+    argocd-image-updater.argoproj.io/write-back-method: argocd
+spec:
+  project: dev
+  source:
+    repoURL: git@github.com:Early-Access-Care-LLC/easv3_deployments.git
+    targetRevision: main
+    path: apps/child/helm-chart
+    helm:
+      valueFiles:
+        - values.dev.yaml
+  destination:
+    server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
+    namespace: child-dev
+  syncPolicy:
+    # automated:
+    #     prune: true 
+    syncOptions:
+      - CreateNamespace=true
+      # - PrunePropagationPolicy=foreground

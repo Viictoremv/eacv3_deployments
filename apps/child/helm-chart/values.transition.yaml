@@ -1,0 +1,57 @@
+image:
+  repository: earlyaccesscare/easv3_child_web
+  tag: dev-main-1105
+  pullPolicy: Always
+
+# This environment name is used with .Values.publicEnvironments
+# to determine if the Gateway should be internal or public.
+environment: transition
+
+gateway:
+  name: eac-gateway-nonprod
+  sectionName: transition-child 
+  enabled: true
+  className: kgateway
+  hosts:
+    - transition.v3.earlyaccesscare.com
+  tls:
+    secretName: child-transition-tls
+    clusterIssuer: letsencrypt-nonprod
+  # Transition is a public environment
+  internal: true
+
+envFrom:
+  - secretRef:
+      name: app-env-secret
+
+persistentVolume:
+  web:
+    enabled: true
+    storageClassName: azurefile-csi-premium
+
+akv:
+  secretProviderClass: akv-child-transition
+
+networkPolicy:
+  enabled: true
+  allowRulesEnabled: true
+
+  allowFromNamespaces:
+    - kube-system
+    - istio-system
+    - kgateway-system
+
+  allowFromIpCidrs:
+    - "10.0.40.0/24"
+    - "10.0.33.0/24"
+
+  allowDNS: true
+
+  allowEgressCidrs:
+    - { cidr: "10.0.34.64/26", port: 3306 }
+    - { cidr: "0.0.0.0/0", port: 443 }
+    - { cidr: "0.0.0.0/0", port: 80 }
+    - { cidr: "10.0.34.128/26", port: 6379 }
+    - { cidr: "10.0.0.0/16", port: 18000 }
+    - { cidr: "10.0.0.0/16", port: 9977 }
+    - { cidr: "10.0.0.0/16", port: 9978 }

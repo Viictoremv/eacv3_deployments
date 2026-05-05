@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "eas-app-v3-child.fullname" . }}-web
+  labels:
+    app: {{ include "eas-app-v3-child.name" . }}-web
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount.web }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ include "eas-app-v3-child.name" . }}-web
+  template:
+    metadata:
+      labels:
+        app: {{ include "eas-app-v3-child.name" . }}-web
+    spec:
+      securityContext:
+        fsGroup: 33   # www-data for writable AzureFile mounts
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: akv-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ .Values.akv.secretProviderClass }}
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ include "eas-app-v3-child.fullname" . }}-web-pvc
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: app-env-secret
+          {{- if .Values.env }}
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: akv-secrets
+              mountPath: /var/run/akv
+              readOnly: true
+            - name: uploads
+              mountPath: /var/www/html/public/assets/uploads
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: {{ index .Values.gateway.hosts 0 | quote }}
+                - name: X-Health-Check
+                  value: "1"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: {{ index .Values.gateway.hosts 0 | quote }}
+                - name: X-Health-Check
+                  value: "1"
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: demo
+  namespace: argocd
+spec:
+  description: Early Access System Demo Environment
+  sourceRepos:
+    - git@github.com:Early-Access-Care-LLC/easv3_deployments.git
+  destinations:
+    - namespace: parent-demo
+      server: https://eaceas-q4zby22b.privatelink.eastus.azmk8s.io:443
+    - namespace: child-demo
+      server: https://eaceas-q4zby22b.privatelink.eastus.azmk8s.io:443
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  orphanedResources:
+    warn: true
+  syncWindows: []   # add “allow” windows later if you want time-based control

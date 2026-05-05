@@ -1,0 +1,116 @@
+{{- if .Values.otelCollector.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "eas-app-v3-child.fullname" . }}-otel-config
+  labels:
+    {{- include "eas-app-v3-child.labels" . | nindent 4 }}
+data:
+  collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http:
+            endpoint: 0.0.0.0:4318
+          grpc:
+            endpoint: 0.0.0.0:4317
+
+    processors:
+      batch:
+        timeout: 10s
+        send_batch_size: 512
+
+    exporters:
+      otlphttp:
+        endpoint: {{ .Values.otelCollector.dash0.endpoint }}
+        headers:
+          Authorization: "Bearer {{ .Values.otelCollector.dash0.apiKey }}"
+          Dash0-Dataset: default
+      debug:
+        verbosity: detailed
+
+    service:
+      telemetry:
+        logs:
+          level: {{ .Values.otelCollector.logLevel | default "info" }}
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp{{ if .Values.otelCollector.debug }}, debug{{ end }}]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp{{ if .Values.otelCollector.debug }}, debug{{ end }}]
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp{{ if .Values.otelCollector.debug }}, debug{{ end }}]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "eas-app-v3-child.fullname" . }}-otel-collector
+  labels:
+    {{- include "eas-app-v3-child.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "eas-app-v3-child.name" . }}-otel-collector
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "eas-app-v3-child.name" . }}-otel-collector
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: otel-collector
+        image: {{ .Values.otelCollector.image.repository }}:{{ .Values.otelCollector.image.tag | default "latest" }}
+        command: ["/otelcol-contrib", "--config=/etc/otel-collector-config.yaml"]
+        ports:
+        - containerPort: 4317
+          name: grpc
+          protocol: TCP
+        - containerPort: 4318
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otel-collector-config.yaml
+          subPath: collector.yaml
+          readOnly: true
+        resources:
+          {{- toYaml .Values.otelCollector.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "eas-app-v3-child.fullname" . }}-otel-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "eas-app-v3-child.fullname" . }}-otel-collector
+  labels:
+    {{- include "eas-app-v3-child.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4317
+    targetPort: grpc
+    protocol: TCP
+    name: grpc
+  - port: 4318
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: {{ include "eas-app-v3-child.name" . }}-otel-collector
+    release: {{ .Release.Name }}
+{{- end }}

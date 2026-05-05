@@ -1,0 +1,25 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "eas-app-v3-child.fullname" . }}-httproute
+  namespace: {{ .Release.Namespace }}
+
+spec:
+  parentRefs:
+    - name: {{ .Values.gateway.name }}
+      namespace: kgateway-system        # IMPORTANT — shared gateway lives here
+      sectionName: {{ .Values.gateway.sectionName }} # Bind specifically to the HTTPS listener
+
+  hostnames:
+  {{- range .Values.gateway.hosts }}
+    - {{ . }}
+  {{- end }}
+
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "eas-app-v3-child.fullname" . }}-web
+          port: {{ .Values.service.web.port }}

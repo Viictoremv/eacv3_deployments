@@ -1,0 +1,58 @@
+{{- if and .Values.networkPolicy.enabled .Values.networkPolicy.allowRulesEnabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "eas-app-v3-child.fullname" . }}-allow
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "eas-app-v3-child.name" . }}-web
+  policyTypes: ["Ingress", "Egress"]
+
+  ingress:
+    - from:
+        {{- range .Values.networkPolicy.allowFromNamespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "{{ . }}"
+        {{- end }}
+
+        # All pods in this namespace (includes the Gateway pod)
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "{{ .Release.Namespace }}"
+
+        # Explicitly allow kgateway pods by label (same namespace)
+        - podSelector:
+            matchLabels:
+              kgateway: kube-gateway
+
+        {{- range .Values.networkPolicy.allowFromIpCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.web.port | default 80 }}
+
+  egress:
+    {{- if .Values.networkPolicy.allowDNS }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "kube-system"
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    {{- end }}
+    {{- range .Values.networkPolicy.allowEgressCidrs }}
+    - to:
+        - ipBlock:
+            cidr: {{ .cidr }}
+      ports:
+        - port: {{ .port }}
+          protocol: TCP
+    {{- end }}
+{{- end }}

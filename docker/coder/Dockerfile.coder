@@ -1,0 +1,71 @@
+FROM almalinux:8
+
+# Ensure all packages are up to date to reduce vulnerabilities
+RUN dnf -y update && dnf clean all
+
+# Configure stable repos and install system tools
+RUN dnf install -y epel-release && \
+    dnf install -y dnf-utils curl unzip zip nano bash-completion git sudo which \
+    https://rpms.remirepo.net/enterprise/remi-release-8.rpm && \
+    dnf module reset php -y && \
+    dnf module enable php:remi-8.2 -y && \
+    dnf install -y php php-cli php-common php-mbstring php-xml php-curl php-mysqlnd \
+                   php-zip php-bcmath php-soap php-intl php-readline php-fpm php-opcache \
+                   php-pecl-xdebug && \
+    dnf clean all
+
+# Enable Xdebug for CLI usage
+RUN echo "zend_extension=xdebug.so" >> /etc/php.d/15-xdebug.ini && \
+    echo "xdebug.mode=develop,debug" >> /etc/php.d/15-xdebug.ini && \
+    echo "xdebug.start_with_request=yes" >> /etc/php.d/15-xdebug.ini && \
+    echo "xdebug.discover_client_host=true" >> /etc/php.d/15-xdebug.ini
+
+# Install Composer globally
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Install Symfony CLI
+RUN curl -sS https://get.symfony.com/cli/installer | bash && \
+    mv /root/.symfony*/bin/symfony /usr/local/bin/symfony
+
+# Install Node.js 22 (disable default module to avoid fallback to Node.js 16)
+RUN dnf module disable -y nodejs && \
+    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - && \
+    dnf install -y nodejs && \
+    dnf clean all
+
+# Install OpenSSH server
+RUN dnf install -y openssh-server && \
+    ssh-keygen -A
+
+# Create passwordless sudo user
+RUN useradd -m dev && echo "dev:dev" | chpasswd && echo 'dev ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+# Configure SSH for dev login
+RUN mkdir -p /run/sshd && \
+    echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config && \
+    echo 'PermitRootLogin no' >> /etc/ssh/sshd_config && \
+    echo 'AllowUsers dev' >> /etc/ssh/sshd_config && \
+    chmod 600 /etc/ssh/sshd_config
+
+# Add alias for coder-bash inside dev user's shell
+RUN touch /home/dev/.bashrc && \
+    echo "alias coder-bash='/workspace/easv3_deployments/docker/coder/coder-bash.sh'" >> /home/dev/.bashrc
+
+# Install runtime helpers (e.g., vim, ps, man)
+RUN dnf install -y procps-ng vim man-db && dnf clean all
+
+# Install code-server for VSCode extensions
+RUN curl -fsSL https://code-server.dev/install.sh | sh
+
+# --- Enable Redis, igbinary, and msgpack for PHP CLI ---
+RUN dnf install -y php82-php-pecl-redis6 && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/igbinary.so" > /etc/php.d/40-igbinary.ini && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/msgpack.so" > /etc/php.d/41-msgpack.ini && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/redis.so" > /etc/php.d/50-redis.ini
+
+EXPOSE 22
+
+CMD ["/usr/sbin/sshd", "-D"]
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s \
+  CMD nc -z localhost 22 || exit 1

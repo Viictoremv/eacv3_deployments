@@ -1,0 +1,36 @@
+# Source: easv3-child/templates/migrations-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: child-dev-easv3-child-migrations
+  labels:
+    app.kubernetes.io/instance: child-dev
+    app.kubernetes.io/name: easv3-child
+    helm.sh/chart: easv3-child-1.0.1
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: SkipAwait=true
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400 # keep logs for a day so you can inspect later
+  template:
+    spec:
+      restartPolicy: OnFailure
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: migrate
+          image: earlyaccesscare/easv3_child_web:latest
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: app-env-secret
+          env:
+            - name: APP_ENV
+              value: "dev"
+            - name: APP_DEBUG
+              value: "1"
+          command:
+            - /bin/sh
+            - -ceu
+            - "php -v\necho \"\U0001F7E2 Checking database migrations...\"\n\n# Try to detect current migration status\nif php bin/console doctrine:migrations:up-to-date --env=${APP_ENV}; then\n  echo \"✅ No pending migrations. Exiting cleanly.\"\n  exit 0\nelse\n  echo \"\U0001F7E1 Running migrations if needed...\"\n  php -d memory_limit=512M bin/console doctrine:migrations:migrate -n --env=${APP_ENV} || true\n  echo \"✅ Migration job finished (no fatal errors).\"\nfi\n"

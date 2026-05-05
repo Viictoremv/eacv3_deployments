@@ -1,0 +1,65 @@
+{{- if .Values.gateway.enabled }}
+Welcome to the Early Access System v3 App! 🎉
+
+Release:  {{ .Release.Name }}
+Chart:    {{ .Chart.Name }} v{{ .Chart.Version }}
+App Ver:  {{ .Chart.AppVersion }}
+
+─────────────────────────────────────────────
+🌐 Application URL
+─────────────────────────────────────────────
+{{- range .Values.gateway.hosts }}
+  - https://{{ . }}
+{{- end }}
+
+TLS certificates are managed via cert-manager:
+  TLS Secret → {{ .Values.gateway.tls.secretName }}
+
+─────────────────────────────────────────────
+🔍 How to check status
+─────────────────────────────────────────────
+Pods:
+  kubectl -n {{ .Release.Namespace }} get pods -l app={{ include "eas-app-v3-child.name" . }}-web
+
+Gateway:
+  kubectl -n {{ .Release.Namespace }} get gateway {{ include "eas-app-v3-child.fullname" . }}-gateway
+
+HTTPRoute:
+  kubectl -n {{ .Release.Namespace }} get httproute {{ include "eas-app-v3-child.fullname" . }}-httproute
+
+Certificate Secret:
+  kubectl -n {{ .Release.Namespace }} get secret {{ .Values.gateway.tls.secretName }}
+
+─────────────────────────────────────────────
+📦 Storage
+─────────────────────────────────────────────
+{{- if .Values.persistentVolume.web.enabled }}
+PVC created:
+  - {{ include "eas-app-v3-child.fullname" . }}-web-pvc
+  - Class: {{ .Values.persistentVolume.web.storageClassName }}
+  - Size:  {{ .Values.persistentVolume.web.size | default "1Gi" }}
+{{- else }}
+No PersistentVolumeClaim created (ephemeral storage only).
+{{- end }}
+
+─────────────────────────────────────────────
+🔒 Network Policy
+─────────────────────────────────────────────
+Ingress:
+  - Allowed from kube-system, istio-system, and App Gateway subnet
+Egress:
+  - kube-dns (UDP/TCP 53)
+  - MySQL (TCP 3306)
+  - Additional external APIs if configured
+
+─────────────────────────────────────────────
+🚀 Next Steps
+─────────────────────────────────────────────
+- Sync this app via ArgoCD (if not auto-synced).
+- Verify HTTPS access works at the URLs above.
+- Tail pod logs for runtime issues:
+    kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "eas-app-v3-child.fullname" . }}-web
+
+{{- else }}
+Gateway is disabled. To expose this app, set `gateway.enabled=true` in your values.yaml.
+{{- end }}

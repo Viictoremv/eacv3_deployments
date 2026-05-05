@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: child-testing
+  namespace: argocd
+spec:
+  project: testing
+  source:
+    repoURL: git@github.com:Early-Access-Care-LLC/easv3_deployments.git
+    targetRevision: main
+    path: apps/child/helm-chart
+    helm:
+      valueFiles:
+        - values.testing.yaml   # <-- this file must live in the chart root
+  destination:
+    server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
+    namespace: child-testing
+  syncPolicy:
+    # automated: {}           # leave empty for manual sync; remove if you want auto
+    syncOptions:
+      - CreateNamespace=true

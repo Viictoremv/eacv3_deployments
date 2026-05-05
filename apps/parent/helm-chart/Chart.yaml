@@ -1,0 +1,34 @@
+apiVersion: v2
+name: easv3-parent
+type: application
+version: 1.0.1
+appVersion: "3.0.0"
+
+description: Helm chart for deploying the Early Access System (EAS) v3 Parent Web App and Database
+
+home: https://earlyaccesscare.com
+icon: https://earlyaccesscare.com/uploads/images/logos/sq.svg
+sources:
+  - https://github.com/Early-Access-Care-LLC/easv3parent
+
+keywords:
+  - eas
+  - symfony
+  - mailgun
+  - mysql
+  - doctrine
+  - kubernetes
+  - helm
+
+maintainers:
+  - name: Benjamen Rubert
+    email: ben@intheworksandco.com
+
+annotations:
+  category: Web Application
+  helm.sh/show-on-chart-hub: "true"
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/Early-Access-Care-LLC/easv3parent/readme.md
+    - name: GitHub Repository
+      url: https://github.com/Early-Access-Care-LLC/easv3parent

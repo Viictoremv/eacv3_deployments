@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: parent-training
+  namespace: argocd
+spec:
+  project: training
+  source:
+    repoURL: git@github.com:Early-Access-Care-LLC/easv3_deployments.git
+    targetRevision: main
+    path: apps/parent/helm-chart
+    helm:
+      valueFiles:
+        - values.training.yaml   # <-- this file must live in the chart root
+  destination:
+    server: https://eaceas-q4zby22b.privatelink.eastus.azmk8s.io:443
+    namespace: parent-training
+  syncPolicy:
+    # automated: {}           # leave empty for manual sync; remove if you want auto
+    syncOptions:
+      - CreateNamespace=false
+      - RespectIgnoreDifferences=true
+  IgnoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data/tls.crt
+        - /data/tls.key
+      # limit by label so we only ignore cert-manager TLS secrets
+      managedFieldsManagers:
+        - cert-manager

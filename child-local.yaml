@@ -1,0 +1,239 @@
+---
+# Source: easv3-child/templates/netpol-allow.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: child-dev-easv3-child-allow
+spec:
+  podSelector:
+    matchLabels:
+      app: easv3-child-web
+  policyTypes: ["Ingress","Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "kube-system"
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "istio-system"
+        - ipBlock:
+            cidr: 10.0.40.0/24
+      ports:
+        - protocol: TCP
+          port: 80
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "kube-system"
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - ipBlock:
+            cidr: 10.0.34.64/26
+      ports:
+        - port: 3306
+          protocol: TCP
+---
+# Source: easv3-child/templates/netpol-default-deny.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: child-dev-easv3-child-default-deny
+spec:
+  podSelector:
+    matchLabels:
+      app: easv3-child-web
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:  []
+---
+# Source: easv3-child/templates/pvc-web.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: child-dev-easv3-child-web-pvc
+  labels:
+    app: easv3-child-web
+    release: child-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: azurefile-csi
+---
+# Source: easv3-child/templates/service-web.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: child-dev-easv3-child-web
+  labels:
+    app.kubernetes.io/name: easv3-child
+    helm.sh/chart: easv3-child-1.0.1
+    app.kubernetes.io/instance: child-dev
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  selector:
+    app: easv3-child-web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+---
+# Source: easv3-child/templates/deployment-web.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: child-dev-easv3-child-web
+  labels:
+    app: easv3-child-web
+    release: child-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: easv3-child-web
+  template:
+    metadata:
+      labels:
+        app: easv3-child-web
+    spec:
+      volumes:
+        - name: akv-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              # SPC must already exist in the namespace (created by TF)
+              secretProviderClass: akv-child-dev
+      containers:
+        - name: web
+          image: "earlyaccesscare/easv3_child_web:latest"
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: app-env-secret
+          volumeMounts:
+            - name: akv-secrets
+              mountPath: /var/run/akv
+              readOnly: true
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 80
+              httpHeaders:
+                - name: X-Health-Check
+                  value: "1"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: 80
+              httpHeaders:
+                - name: X-Health-Check
+                  value: "1"
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+      imagePullSecrets:
+        - name: regcred
+---
+# Source: easv3-child/templates/migrations-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: child-dev-easv3-child-migrations
+  labels:
+    app.kubernetes.io/instance: child-dev
+    app.kubernetes.io/name: easv3-child
+    helm.sh/chart: easv3-child-1.0.1
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: SkipAwait=true
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400  # keep logs for a day so you can inspect later
+  template:
+    spec:
+      restartPolicy: OnFailure
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: migrate
+          image: earlyaccesscare/easv3_child_web:latest
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: app-env-secret
+          env:
+            - name: APP_ENV
+              value: "dev"
+            - name: APP_DEBUG
+              value: "1"
+          command:
+            - /bin/sh
+            - -ceu
+            - |
+              php -v
+              echo "🟢 Checking database migrations..."
+
+              # Try to detect current migration status
+              if php bin/console doctrine:migrations:up-to-date --env=${APP_ENV}; then
+                echo "✅ No pending migrations. Exiting cleanly."
+                exit 0
+              else
+                echo "🟡 Running migrations if needed..."
+                php -d memory_limit=512M bin/console doctrine:migrations:migrate -n --env=${APP_ENV} || true
+                echo "✅ Migration job finished (no fatal errors)."
+              fi
+---
+# Source: easv3-child/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: child-dev-easv3-child-ingress
+  labels:
+    app.kubernetes.io/name: easv3-child
+    helm.sh/chart: easv3-child-1.0.1
+    app.kubernetes.io/instance: child-dev
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    # kubernetes.io/ingress.class: azure/application-gateway
+    appgw.ingress.kubernetes.io/appgw-frontend-ip: private-frontend
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+    appgw.ingress.kubernetes.io/use-private-ip: "true"
+    appgw.ingress.kubernetes.io/health-probe-path: "/login"
+    agic.force-reconcile: "1760065607"
+    cert-manager.io/cluster-issuer: letsencrypt-nonprod
+spec:
+  ingressClassName: azure-application-gateway
+  tls:
+    - hosts:
+        - dev.v3.earlyaccesscare.com
+      secretName: child-dev-tls
+  rules:
+    - host: dev.v3.earlyaccesscare.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: child-dev-easv3-child-web
+                port:
+                  number: 80

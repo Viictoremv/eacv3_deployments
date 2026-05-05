@@ -1,0 +1,29 @@
+image:
+  repository: earlyaccesscare/eas_v3parent_web
+  tag: latest
+  pullPolicy: Always
+
+gateway:
+  name: eac-gateway-nonprod
+  sectionName: dev-parent 
+  enabled: true
+  className: kgateway
+  hosts:
+    - dev.parent.v3.earlyaccesscare.com
+  tls:
+    secretName: parent-dev-tls
+    clusterIssuer: letsencrypt-nonprod
+  # This flag is informational now; ILB behavior is driven by environment/publicEnvironments.
+  internal: true
+
+envFrom:
+  - secretRef:
+      name: app-env-secret
+
+persistentVolume:
+  web:
+    enabled: true
+    storageClassName: azurefile-csi
+
+akv:
+  secretProviderClass: akv-parent-dev   # override per env

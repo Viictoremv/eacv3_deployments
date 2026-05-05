@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "eas-app-v3-parent.fullname" . }}-web
+  labels:
+    app: {{ include "eas-app-v3-parent.name" . }}-web
+    release: {{ .Release.Name }}
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  replicas: {{ .Values.replicaCount.web }}
+  selector:
+    matchLabels:
+      app: {{ include "eas-app-v3-parent.name" . }}-web
+  template:
+    metadata:
+      labels:
+        app: {{ include "eas-app-v3-parent.name" . }}-web
+      annotations:
+        secret.reloader.stakater.com/reload: "app-env-secret"
+    spec:
+      volumes:
+        - name: akv-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              # SPC must already exist in the namespace (created by TF)
+              secretProviderClass: {{ .Values.akv.secretProviderClass | quote }}
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - secretRef:
+                name: app-env-secret
+          volumeMounts:
+            - name: akv-secrets
+              mountPath: /var/run/akv
+              readOnly: true
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: {{ (index .Values.ingress.hosts 0).host | quote }}
+                - name: X-Forwarded-Proto
+                  value: https
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: 80
+              httpHeaders:
+                - name: Host
+                  value: {{ (index .Values.ingress.hosts 0).host | quote }}
+                - name: X-Forwarded-Proto
+                  value: https
+            initialDelaySeconds: 25
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,59 @@
+image:
+  repository: ""
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+replicaCount:
+  web: 1
+
+service:
+  web:
+    type: ClusterIP
+    port: 80
+
+persistentVolume:
+  web:
+    enabled: false
+    size: 1Gi
+    accessMode: ReadWriteOnce
+    storageClassName: ""  # set in env values if needed
+
+gateway:
+  enabled: true
+  className: kgateway
+  hosts: []     # to be overridden per environment
+  tls:
+    secretName: ""   # to be overridden per environment
+  internal: true      # kept for reference; effective behavior is driven by environment/publicEnvironments
+  options:
+    http:
+      connectionBufferLimits:
+        maxRequestBytes: 65536
+      normaliseRequestHeaders: true
+      overrideHost:
+        enabled: false
+
+imagePullSecrets: 
+  - name: "regcred"
+
+networkPolicy:
+  enabled: true
+  allowRulesEnabled: true
+
+  allowFromNamespaces:
+    - kube-system         # e.g., metrics, sidecars, etc.
+    - istio-system        # if you later front with Istio ingress gateway
+
+  allowFromIpCidrs:
+    - "10.0.40.0/24"
+    - "10.0.33.0/24"
+
+  allowDNS: true
+  allowEgressCidrs:
+    - { cidr: "10.0.34.64/26", port: 3306 }
+    - { cidr: "0.0.0.0/0", port: 443 }
+    - { cidr: "0.0.0.0/0", port: 80 }
+    - { cidr: "10.0.34.128/26", port: 6379 }
+
+akv:
+  secretProviderClass: []

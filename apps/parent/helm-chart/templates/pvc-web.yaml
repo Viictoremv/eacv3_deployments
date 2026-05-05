@@ -1,0 +1,19 @@
+# apps/parent/helm-chart/templates/pvc-web.yaml
+{{- if .Values.persistentVolume.web.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "eas-app-v3-parent.fullname" . }}-web-pvc
+  labels:
+    app: {{ include "eas-app-v3-parent.name" . }}-web
+    release: {{ .Release.Name }}
+spec:
+  accessModes:
+    - {{ .Values.persistentVolume.web.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ .Values.persistentVolume.web.size | default "1Gi" }}
+  {{- if .Values.persistentVolume.web.storageClassName }}
+  storageClassName: {{ .Values.persistentVolume.web.storageClassName }}
+  {{- end }}
+{{- end }}

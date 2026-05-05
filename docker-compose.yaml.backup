@@ -1,0 +1,128 @@
+services:
+  # CHILD DATABASE
+  child_db:
+    image: ${CHILD_DB_IMAGE}
+    container_name: easv3_child_db
+    platform: linux/amd64
+    restart: always
+    env_file:
+      - ./env/child/.env.local.override
+    volumes:
+      - child_db_data:/var/lib/mysql
+      - ./docker/initdb/child:/docker-entrypoint-initdb.d/
+    ports:
+      - "3306:3306"
+    networks:
+      - eas_v3_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # CHILD WEB APP
+  child_web:
+    image: ${CHILD_IMAGE}
+    container_name: easv3_child_web
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      child_db:
+        condition: service_healthy
+    env_file:
+      - ./env/child/.env.local.override
+    environment:
+      - APP_ENV=dev
+      - APP_DEBUG=1
+    volumes:
+      - ../eacv3/assets:/var/www/html/assets:cached
+      - ../eacv3/src:/var/www/html/src:cached
+      - ../eacv3/templates:/var/www/html/templates:cached
+      - ../eacv3/migrations:/var/www/html/migrations:cached
+      - ../eacv3/public:/var/www/html/public:cached
+      - ../eacv3/tests:/var/www/html/tests:cached
+      - child_cache_data:/var/www/html/var
+      - ~/.gitconfig:/root/.gitconfig:ro
+      - ~/.ssh:/root/.ssh:ro
+      - ./setup/init-secrets.sh:/usr/local/bin/init-secrets.sh:ro
+      - ${CHILD_ENV_FILE}:/var/www/html/.env.local.override:ro
+      - .:/usr/src/easv3_deployment:cached
+    command: bash -c "source /usr/local/bin/init-secrets.sh && bash"
+    networks:
+      - eas_v3_network
+
+  # PARENT DATABASE
+  parent_db:
+    image: ${PARENT_DB_IMAGE}
+    container_name: easv3_parent_db
+    platform: linux/amd64
+    restart: always
+    env_file:
+      - ./env/parent/.env.local.override
+    volumes:
+      - parent_db_data:/var/lib/mysql
+      - ./docker/initdb/parent:/docker-entrypoint-initdb.d/
+    ports:
+      - "3307:3306"
+    networks:
+      - eas_v3_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # PARENT WEB APP
+  parent_web:
+    image: ${PARENT_IMAGE}
+    container_name: easv3_parent_web
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      parent_db:
+        condition: service_healthy
+    env_file:
+      - ./env/parent/.env.local.override
+    environment:
+      - APP_ENV=dev
+      - APP_DEBUG=1
+      - DB_SERVER_VERSION=8.0
+    volumes:
+      - ../easv3parent/assets:/var/www/html/assets:cached
+      - ../easv3parent/src:/var/www/html/src:cached
+      - ../easv3parent/templates:/var/www/html/templates:cached
+      - ../easv3parent/migrations:/var/www/html/migrations:cached
+      - ../easv3parent/public:/var/www/html/public:cached
+      - ../easv3parent/tests:/var/www/html/tests:cached
+      # - parent_cache_data:/home/parenteac/session
+      - ~/.gitconfig:/root/.gitconfig:ro
+      - ~/.ssh:/root/.ssh:ro
+      - ${PARENT_ENV_FILE}:/var/www/html/.env.local.override:ro
+    command: bash -c "/opt/remi/php82/root/usr/sbin/php-fpm && /usr/sbin/httpd -D FOREGROUND"
+    networks:
+      - eas_v3_network
+
+  # NGINX REVERSE PROXY
+  nginx:
+    image: earlyaccesscare/easv3_nginx:latest
+    container_name: easv3_nginx
+    platform: linux/amd64
+    depends_on:
+      - child_web
+      - parent_web
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - eas_v3_network
+
+volumes:
+  child_db_data:
+  parent_db_data:
+  child_cache_data:
+  parent_cache_data:
+
+networks:
+  eas_v3_network:
+    driver: bridge

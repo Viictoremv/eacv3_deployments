@@ -1,0 +1,35 @@
+image:
+  repository: earlyaccesscare/eas_v3parent_web
+  tag: latest
+  pullPolicy: Always
+
+ingress:
+  enabled: true
+  className: azure-application-gateway
+  frontend:
+    name: private-frontend
+    usePrivateIP: "true"
+  annotations:
+    appgw.ingress.kubernetes.io/appgw-frontend-ip: private-frontend
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-nonprod
+  hosts:
+    - host: testing.parent.v3.earlyaccesscare.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts: [testing.parent.v3.earlyaccesscare.com]
+      secretName: parent-testing-tls
+
+envFrom:
+  - secretRef:
+      name: app-env-secret
+
+persistentVolume:
+  web:
+    enabled: true
+    storageClassName: azurefile-csi
+
+akv:
+  secretProviderClass: akv-parent-testing   # override per env

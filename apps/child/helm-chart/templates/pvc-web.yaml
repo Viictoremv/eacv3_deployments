@@ -1,0 +1,18 @@
+{{- if .Values.persistentVolume.web.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "eas-app-v3-child.fullname" . }}-web-pvc
+  labels:
+    app: {{ include "eas-app-v3-child.name" . }}-web
+    release: {{ .Release.Name }}
+spec:
+  accessModes:
+    - {{ .Values.persistentVolume.web.accessMode | default "ReadWriteMany" }}
+  resources:
+    requests:
+      storage: {{ .Values.persistentVolume.web.size | default "1Gi" }}
+  {{- if .Values.persistentVolume.web.storageClassName }}
+  storageClassName: {{ .Values.persistentVolume.web.storageClassName }}
+  {{- end }}
+{{- end }}

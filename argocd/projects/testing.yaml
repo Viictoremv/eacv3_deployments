@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: testing
+  namespace: argocd
+spec:
+  description: Early Access System Testing Environment
+  sourceRepos:
+    - git@github.com:Early-Access-Care-LLC/easv3_deployments.git
+  destinations:
+    - namespace: parent-testing
+      server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
+    - namespace: child-testing
+      server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  orphanedResources:
+    warn: true
+  syncWindows: []   # add “allow” windows later if you want time-based control

@@ -1,0 +1,65 @@
+image:
+  repository: earlyaccesscare/easv3_child_web
+  tag: dev-main-631
+  pullPolicy: Always
+
+ingress:
+  enabled: true
+  className: azure-application-gateway
+  frontend:
+    name: appGatewayFrontendIP
+    usePrivateIP: false
+  annotations:
+    appgw.ingress.kubernetes.io/appgw-frontend-ip: appGatewayFrontendIP
+    appgw.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: demo.v3.earlyaccesscare.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts: [demo.v3.earlyaccesscare.com]
+      secretName: child-demo-tls
+
+envFrom:
+  - secretRef:
+      name: app-env-secret
+
+env:
+  - name: OTEL_SDK_DISABLED
+    value: "false"
+  - name: OTEL_TRACES_EXPORTER
+    value: "otlp"
+  - name: OTEL_EXPORTER_OTLP_PROTOCOL
+    value: "http/protobuf"
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: "http://child-demo-eas-app-v3-child-otel-collector:4318"
+  - name: OTEL_EXPORTER_OTLP_TRACES_TIMEOUT
+    value: "30000"
+  - name: OTEL_SERVICE_NAME
+    value: "easv3-child-demo"
+  - name: OTEL_RESOURCE_ATTRIBUTES
+    value: "service.namespace=eac,service.version=demo,deployment.environment=demo"
+  - name: OTEL_PHP_AUTOLOAD_ENABLED
+    value: "true"
+  - name: OTEL_PROPAGATORS
+    value: "tracecontext,baggage"
+  - name: OTEL_TRACES_SAMPLER
+    value: "parentbased_always_on"
+
+persistentVolume:
+  web:
+    enabled: true
+    storageClassName: azurefile-csi-premium
+
+akv:
+  secretProviderClass: akv-child-demo   # override per env
+
+# Update 10/6/2025
+
+# OpenTelemetry Collector for demo environment
+otelCollector:
+  enabled: true
+  debug: false
+  logLevel: info

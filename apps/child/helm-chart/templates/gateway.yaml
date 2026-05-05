@@ -1,0 +1,48 @@
+{{- if .Values.gateway.create }}
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.gateway.name }}
+  namespace: kgateway-system
+
+  labels:
+    kgateway: kube-gateway
+    app.kubernetes.io/managed-by: Helm
+
+  annotations:
+    gateway.kgateway.dev/forward-x-forwarded-port: "true"
+    gateway.kgateway.dev/forward-x-forwarded-proto: "true"
+    gateway.kgateway.dev/forward-original-host: "true"
+    gateway.kgateway.dev/forward-x-forwarded-host: "true"
+
+    kgateway.dev/idle-timeout: "120s"
+    kgateway.dev/write-timeout: "120s"
+    kgateway.dev/read-timeout:  "120s"
+
+spec:
+  gatewayClassName: kgateway
+
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: {{ index .Values.gateway.hosts 0 | quote }}
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.gateway.tls.secretName }}
+            group: ""
+            kind: Secret
+
+{{- end }}
