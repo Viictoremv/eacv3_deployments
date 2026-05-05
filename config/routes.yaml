@@ -1,0 +1,55 @@
+controllers:
+  resource:
+    path: ../src/Controller/
+    namespace: App\Controller
+  type: attribute
+
+# basic CMS CRUD view list of records
+cms_index:
+  path: /{entity}
+  controller: App\Controller\CmsController::index
+  methods: GET|POST
+  requirements:
+    path: "^(?!admin|login).+" #ignore paths like /login
+
+# basic CMS CRUD add new record
+cms_new:
+  path: /{entity}/new
+  controller: App\Controller\CmsController::new
+  methods: GET
+
+# basic CMS CRUD handle submitted new record request
+cms_new_submit:
+  path: /{entity}/new
+  controller: App\Controller\CmsController::newSubmit
+  methods: POST|PUT
+
+# basic CMS CRUD show record
+cms_show:
+  path: /{entity}/{id}
+  controller: App\Controller\CmsController::show
+  methods: GET
+
+# basic CMS CRUD display edit form
+cms_edit:
+  path: /{entity}/{id}/edit
+  controller: App\Controller\CmsController::edit
+  methods: GET
+
+# basic CMS CRUD handle submitted edit record request
+cms_edit_submit:
+  path: /{entity}/{id}/edit
+  controller: App\Controller\CmsController::editSubmit
+  methods: POST|PUT
+
+# basic CMS CRUD display delete record
+cms_delete:
+  path: /{entity}/{id}/delete
+  controller: App\Controller\CmsController::delete
+  methods: GET
+
+# basic CMS CRUD handle submitted delete record request
+cms_delete_submit:
+  path: /{entity}/{id}/delete
+  controller: App\Controller\CmsController::deleteSubmit
+  methods: POST|DELETE

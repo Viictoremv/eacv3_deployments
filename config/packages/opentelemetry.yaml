@@ -1,0 +1,17 @@
+# OpenTelemetry configuration temporarily disabled to prevent service registration errors
+# Uncomment and configure when implementing proper OpenTelemetry instrumentation
+
+# services:
+#   _defaults:
+#     autowire: true
+#     autoconfigure: true
+
+#   # Doctrine DBAL instrumentation
+#   OpenTelemetry\Contrib\Instrumentation\Doctrine\DoctrineInstrumentation:
+#     tags:
+#       - { name: "otel.instrumentation" }
+
+#   # Add middleware to Doctrine connections
+#   OpenTelemetry\Contrib\Instrumentation\Doctrine\Middleware\TracingMiddleware:
+#     tags:
+#       - { name: "doctrine.middleware" }

@@ -1,0 +1,16 @@
+# Latest documentation available at https://omines.github.io/datatables-bundle/#configuration
+datatables:
+    # Load i18n data from DataTables CDN or locally
+    language_from_cdn:    false
+    # Set options, as documented at https://datatables.net/reference/option/
+    options:
+        lengthMenu : [10, 25, 50, 100, 250, 500, 1000, 2500]
+        pageLength: 50
+        dom: ' <"omines_dt_btns row justify-content-sm-between align-items-center mb-3"<"col-sm-auto"i><"col-sm-auto"B><"col-sm-auto"f>><"table-responsive omines mb-2"Ttr><"row align-items-center"<"col-sm-5 col-lg small"l><"col-sm-auto"g><"col-sm col-lg-auto"p>> '
+
+    template_parameters:
+        # Example classes to integrate nicely with Bootstrap 3.x
+        className: 'table table-striped align-top data-table'
+
+    # You can for example override this to "tables" to keep the translation domains separated nicely
+    translation_domain: 'messages'

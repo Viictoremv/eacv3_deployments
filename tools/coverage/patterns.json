@@ -1,0 +1,19 @@
+{
+  "include": [
+    "templates",
+    "assets/scss"
+  ],
+  "extensions": [
+    ".twig",
+    ".scss"
+  ],
+  "exclude": [
+    "vendor",
+    "node_modules",
+    "var",
+    "public",
+    "reports",
+    "tests",
+    "scripts"
+  ]
+}

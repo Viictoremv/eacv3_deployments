@@ -1,0 +1,21 @@
+# See the configuration reference at https://symfony.com/bundles/SchebTwoFactorBundle/6.x/configuration.html
+scheb_two_factor:
+    email:
+        enabled: true
+        mailer: mailer.two_factor_mailer
+        digits: 6
+        template: login/2fa_form.html.twig
+    totp:
+        enabled: true
+        leeway: 25
+        issuer: 'Early Access Care'
+        template: login/2fa_totp_form.html.twig
+    trusted_device:
+        enabled: true
+        lifetime: 5184000
+        cookie_name: trusted_device
+    #backup_codes:
+    #    enabled: true
+    security_tokens:
+        - Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken
+        - Symfony\Component\Security\Http\Authenticator\Token\PostAuthenticationToken

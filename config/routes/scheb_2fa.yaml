@@ -1,0 +1,11 @@
+# config/routes/scheb_2fa.yaml
+
+2fa_login:
+    path: /2fa
+    controller: scheb_two_factor.form_controller::form
+    methods: [GET, POST]
+
+2fa_login_check:
+    path: /2fa_check
+    controller: scheb_two_factor.authenticator::check
+    methods: [POST]

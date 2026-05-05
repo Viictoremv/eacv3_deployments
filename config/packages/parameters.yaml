@@ -1,0 +1,2 @@
+#parameters:
+#  mail_recipients: "%env(csv:MAIL_RECIPIENTS)%"

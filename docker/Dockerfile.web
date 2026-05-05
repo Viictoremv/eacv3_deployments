@@ -1,0 +1,238 @@
+# syntax=docker/dockerfile:1.4
+
+##########################
+# Stage 1: Build assets  #
+##########################
+
+FROM almalinux:8.10 AS builder
+
+# Install system dependencies and PHP 8.2 (Remi) and Node.js 22 (via Nodesource)
+RUN dnf install -y epel-release && \
+    dnf install -y https://rpms.remirepo.net/enterprise/remi-release-8.rpm && \
+    dnf module reset php -y && \
+    dnf module enable php:remi-8.2 -y && \
+    dnf install -y \
+    php82 php82-php-cli php82-php-common php82-php-json php82-php-mbstring php82-php-pdo php82-php-xml \
+    php82-php-mysqlnd php82-php-opcache php82-php-fpm php82-php-pecl-zip php82-php-intl php82-php-gd \
+    unzip git curl && \
+    ln -s /usr/bin/php82 /usr/bin/php && \
+    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - && \
+    dnf install -y nodejs && \
+    dnf clean all
+
+# Install OTel extension build dependencies
+RUN dnf install -y gcc gcc-c++ make autoconf libtool php82-php-devel php82-php-pear && \
+    ln -sf /opt/remi/php82/root/usr/bin/phpize /usr/bin/phpize && \
+    ln -sf /opt/remi/php82/root/usr/bin/pecl /usr/bin/pecl && \
+    ln -sf /opt/remi/php82/root/usr/bin/php-config /usr/bin/php-config && \
+    ln -sf /opt/remi/php82/root/bin/php /usr/bin/php && \
+    pecl install opentelemetry && \
+    echo "extension=opentelemetry.so" > /etc/opt/remi/php82/php.d/60-opentelemetry.ini && \
+    php -m | grep -i opentelemetry && echo "✓ OTel extension loaded in builder" || echo "✗ OTel extension failed to load"
+
+# --- Install Redis extension and dependencies ---
+RUN dnf install -y php82-php-pecl-redis6 && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/igbinary.so" > /etc/opt/remi/php82/php.d/40-igbinary.ini && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/msgpack.so" > /etc/opt/remi/php82/php.d/41-msgpack.ini && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/redis.so" > /etc/opt/remi/php82/php.d/50-redis.ini && \
+    dnf clean all && rm -rf /var/cache/dnf
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php && \
+    mv composer.phar /usr/local/bin/composer
+
+RUN composer require open-telemetry/opentelemetry-auto-psr18 \
+    open-telemetry/sdk
+
+WORKDIR /app
+
+# Copy composer files early to leverage layer caching
+COPY composer.json ./
+# Copy composer.lock if it exists
+COPY composer.lock* ./
+COPY . .
+
+# Update dependencies to resolve version conflicts in composer.json
+RUN composer update --no-interaction --no-progress
+
+# Install PHP deps
+RUN composer install --prefer-dist --no-scripts --no-interaction --no-progress --optimize-autoloader --ignore-platform-req=ext-opentelemetry
+
+# Inject into .env.local
+# RUN printf '%s\n' \
+#     "###> symfony/framework-bundle ###" \
+#     "APP_ENV=dev" \
+#     "APP_SECRET=$APP_SECRET" \
+#     "APP_URL=http://localhost" \
+#     "###< symfony/framework-bundle ###" \
+#     "" \
+#     "###> symfony/mailer ###" \
+#     "MAILER_DSN=mailgun+http-custom://api:${MAILGUN_API_KEY}@api.mailgun.net?domain=${MAILER_DOMAIN}&region=us" \
+#     "MAILER_SENDER=$MAILER_SENDER" \
+#     "MAILER_FROM_NAME=\"Early Access Care v3 <noreply@${MAILER_DOMAIN}>\"" \
+#     "###< symfony/mailer ###" \
+#     "" \
+#     "###> doctrine/doctrine-bundle ###" \
+#     "DATABASE_URL=$DATABASE_URL" \
+#     "DB_SERVER_VERSION=8.0" \
+#     "###< doctrine/doctrine-bundle ###" \
+#     "" \
+#     "###> symfony/lock ###" \
+#     "LOCK_DSN=flock" \
+#     "###< symfony/lock ###" > .env.local
+
+RUN composer require symfony/mailgun-mailer:^6.4 symfony/http-client:^6.4 --no-interaction
+
+# Install PHP deps
+RUN composer install --prefer-dist --no-scripts --no-interaction --no-progress --optimize-autoloader
+
+# Build frontend assets (only if applicable)
+RUN if [ -f package.json ]; then npm install --legacy-peer-deps && npm run build; fi
+
+##########################
+# Stage 2: Runtime       #
+##########################
+
+FROM almalinux:8.10
+
+# Install Apache + PHP runtime (no dev tools)
+RUN dnf install -y epel-release && \
+    dnf install -y https://rpms.remirepo.net/enterprise/remi-release-8.rpm && \
+    dnf module reset php -y && \
+    dnf module enable php:remi-8.2 -y && \
+    dnf install -y \
+    httpd php82 php82-php-cli php82-php-common php82-php-json php82-php-mbstring php82-php-pdo php82-php-xml \
+    php82-php-mysqlnd php82-php-opcache php82-php-fpm php82-php-pecl-zip php82-php-intl php82-php-gd \
+    curl unzip git && \
+    ln -s /usr/bin/php82 /usr/bin/php && \
+    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - && \
+    dnf install -y nodejs && \
+    dnf install -y vim-enhanced && \
+    dnf install -y rsync && \
+    dnf install -y rsync supervisor && \
+    dnf install -y ca-certificates && \
+    update-ca-trust enable && update-ca-trust extract && \
+    dnf clean all
+
+# Install wkhtmltopdf (required for PDF generation)
+RUN dnf install -y https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox-0.12.6-1.centos8.x86_64.rpm && \
+    ln -s /usr/local/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
+
+# Copy precompiled OTel extension from builder stage
+COPY --from=builder /opt/remi/php82/root/usr/lib64/php/modules/opentelemetry.so /opt/remi/php82/root/usr/lib64/php/modules/opentelemetry.so
+
+# Enable OTel extension with hooks (auto_prepend_file added later after files are copied)
+RUN echo -e "extension=/opt/remi/php82/root/usr/lib64/php/modules/opentelemetry.so\nopentelemetry.attr_hooks_enabled=On" > /etc/opt/remi/php82/php.d/60-opentelemetry.ini && \
+    php -m | grep -i opentelemetry && echo "✓ OTel extension loaded in runtime" || echo "✗ OTel extension failed in runtime"
+
+# --- Install Redis extension and dependencies ---
+RUN dnf install -y php82-php-pecl-redis6 && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/igbinary.so" > /etc/opt/remi/php82/php.d/40-igbinary.ini && \
+    # echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/msgpack.so" > /etc/opt/remi/php82/php.d/41-msgpack.ini && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/redis.so" > /etc/opt/remi/php82/php.d/50-redis.ini && \
+    dnf clean all && rm -rf /var/cache/dnf
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php && \
+    mv composer.phar /usr/local/bin/composer
+
+WORKDIR /var/www/html
+
+# Copy app from build stage (ensure files owned by apache)
+COPY --from=builder --chown=apache:apache /app /var/www/html
+
+# Copy and set up bashrc
+COPY docker/scripts/.bashrc /root/.bashrc
+
+# Create session dir
+RUN mkdir -p /var/www/html/session && chown apache:apache /var/www/html/session
+
+# Set memory Higher higher to avoid CLI fatal errors
+RUN echo "memory_limit = 1024M" >> /etc/opt/remi/php82/php.ini
+
+# Rename conflicting file
+RUN if [ -f public/.user.ini ]; then mv public/.user.ini public/.user.ini.old; fi
+
+# Ensure var/ folder and permissions
+RUN mkdir -p \
+    /var/www/html/var/cache/dev/doctrine/orm/slc/filelock \
+    /var/www/html/var/log \
+    /var/www/html/src/TransitionEntity && \
+    chown -R apache:apache /var/www/html/var /var/www/html/src && \
+    chmod -R ug+rwX /var/www/html/var /var/www/html/src
+
+RUN mkdir -p /var/www/html/assets && \
+    chown -R apache:apache /var/www/html/assets && \
+    chmod 2775 /var/www/html/assets
+
+# Apache config
+RUN echo '<Directory "/var/www/html/public">' >> /etc/httpd/conf/httpd.conf && \
+    echo "  AllowOverride All" >> /etc/httpd/conf/httpd.conf && \
+    echo "  Require all granted" >> /etc/httpd/conf/httpd.conf && \
+    echo '</Directory>' >> /etc/httpd/conf/httpd.conf && \
+    echo "ServerName localhost" >> /etc/httpd/conf/httpd.conf
+
+# FPM proxy config
+RUN sed -i 's|^listen =.*|listen = 127.0.0.1:9000|' /etc/opt/remi/php82/php-fpm.d/www.conf
+RUN echo 'ProxyPassMatch ^/(.*\.php)$ fcgi://127.0.0.1:9000/var/www/html/public/$1' >> /etc/httpd/conf/httpd.conf
+RUN sed -i 's#DocumentRoot "/var/www/html"#DocumentRoot "/var/www/html/public"#' /etc/httpd/conf/httpd.conf
+RUN chmod -R 755 /var/www/html/public
+RUN mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.bak
+
+# Enable logging and error display
+RUN echo "display_errors = On" >> /etc/opt/remi/php82/php.ini && \
+    echo "error_reporting = E_ALL" >> /etc/opt/remi/php82/php.ini && \
+    echo "log_errors = On" >> /etc/opt/remi/php82/php.ini && \
+    echo "error_log = /proc/self/fd/2" >> /etc/opt/remi/php82/php.ini
+
+# Copy entrypoint + migration runner
+COPY docker/scripts/run-migrations.sh /usr/local/bin/run-migrations.sh
+COPY docker/scripts/entrypoint.sh /entrypoint.sh
+
+# Fix line endings (convert CRLF to LF for shell scripts)
+RUN sed -i 's/\r$//' /entrypoint.sh /usr/local/bin/run-migrations.sh && chmod +x /usr/local/bin/run-migrations.sh /entrypoint.sh
+
+RUN git config --global --add safe.directory /var/www/html
+RUN mkdir -p /var/www/html/var/sessions
+RUN chown -R apache:apache /var/www/html/var/sessions
+RUN chmod -R 775 /var/www/html/var/sessions
+
+# Ensure filelock directories are available and writable
+RUN mkdir -p /tmp/doctrine/filelock/append_only /tmp/doctrine/filelock/read_write && \
+    chmod -R 777 /tmp/doctrine
+
+# Ensure PHP-FPM uses environment variables for session configuration
+RUN echo "env[REDIS_URL] = \$REDIS_URL" >> /etc/opt/remi/php82/php-fpm.d/www.conf && \
+    echo "env[PHP_SESSION_SAVE_HANDLER] = \$PHP_SESSION_SAVE_HANDLER" >> /etc/opt/remi/php82/php-fpm.d/www.conf && \
+    echo "env[PHP_SESSION_SAVE_PATH] = \$PHP_SESSION_SAVE_PATH" >> /etc/opt/remi/php82/php-fpm.d/www.conf
+
+# Ensure Symfony cache, logs, and session directories exist and have correct perms
+RUN mkdir -p var/cache/test var/cache/test/sessions var/cache/test/profiler \
+    && chown -R apache:apache var/cache var/sessions var/log \
+    && chmod -R 775 var/cache var/sessions var/log
+
+# Ensure PHP-FPM keeps environment variables
+RUN sed -i 's/^;*clear_env\s*=.*/clear_env = no/' /etc/opt/remi/php82/php-fpm.d/www.conf
+
+RUN echo "session.locking_enabled = 0" > /etc/opt/remi/php82/php.d/99-session.ini
+
+# Ensure assets/uploads directory exists and is owned by apache
+RUN mkdir -p /var/www/html/assets/uploads && \
+    chown -R apache:apache /var/www/html/assets/uploads && \
+    chmod -R 775 /var/www/html/assets/uploads
+
+# Ensure assets/csv directory exists and is owned by apache
+RUN mkdir -p /var/www/html/assets/csv && \
+    chown -R apache:apache /var/www/html/assets/csv && \
+    chmod -R 775 /var/www/html/assets/csv
+
+# Ensure entire assets/ directory is owned by apache
+RUN chown -R apache:apache /var/www/html/assets
+
+# Add Redis session performance tuning
+COPY docker/php/custom-redis.ini /etc/opt/remi/php82/php.d/zzz-redis.ini
+
+# Use our custom entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+
+EXPOSE 80

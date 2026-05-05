@@ -1,0 +1,32 @@
+framework:
+    cache:
+        # Use the filesystem cache everywhere
+        app: cache.adapter.filesystem
+        # Use Redis for application caching
+        # app: cache.adapter.redis
+        # default_redis_provider: '%env(resolve:REDIS_URL)%'
+
+        # System cache (used by annotations, routes, etc.)
+        system: cache.adapter.system
+
+        # Fallback directory if Redis is unavailable during early boot
+        directory: "%kernel.cache_dir%/pools"
+
+        # Doctrine DBAL default connection provider
+        default_doctrine_dbal_provider: "doctrine.dbal.default_connection"
+
+        # Optional memcached / PDO placeholders for future use
+        default_memcached_provider: "memcached://localhost"
+        default_pdo_provider: null
+
+        # Namespaced pools backed by Redis (unless overridden)
+        pools:
+            base.cache:
+                adapter: cache.app
+                default_lifetime: 10800 # 3 hours in seconds
+
+            doctrine.second_level_cache_pool:
+                adapter: cache.app
+
+        # Prefix seed ensures unique cache namespace across environments
+        prefix_seed: "%kernel.project_dir%.%kernel.environment%"

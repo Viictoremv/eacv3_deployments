@@ -1,0 +1,122 @@
+{
+ "compilerOptions": {
+  "allowJs": true,
+  "allowSyntheticDefaultImports": true,
+  "baseUrl": ".",
+  "checkJs": true,
+  "declaration": true,
+  "declarationMap": true,
+  "esModuleInterop": true,
+  "exactOptionalPropertyTypes": true,
+  "extendedDiagnostics": false,
+  "forceConsistentCasingInFileNames": true,
+  "importHelpers": true,
+  "isolatedModules": true,
+  "jsx": "preserve",
+  "jsxFactory": "h",
+  "jsxFragmentFactory": "Fragment",
+  "lib": [
+   "ES2022",
+   "DOM",
+   "DOM.Iterable"
+  ],
+  "listEmittedFiles": false,
+  "listFiles": false,
+  "module": "ESNext",
+  "moduleResolution": "bundler",
+  "noErrorTruncation": true,
+  "noFallthroughCasesInSwitch": true,
+  "noImplicitAny": true,
+  "noImplicitReturns": true,
+  "noUncheckedIndexedAccess": true,
+  "noUnusedLocals": true,
+  "noUnusedParameters": true,
+  "outDir": "./dist",
+  "paths": {
+   "@assets/*": ["assets/*"],
+   "@coverage-data/*": ["coverage/data/*"],
+   "@coverage/*": ["build/coverage/*"],
+   "@docs/*": ["docs/*"],
+   "@fixtures/*": ["test-fixtures/*"],
+   "@fonts/*": ["assets/fonts/*"],
+   "@js/*": ["assets/js/*"],
+   "@reports/*": ["reports/*"],
+   "@results/*": ["reports/test-results/*"],
+   "@scripts/*": ["scripts/*"],
+   "@scss/*": ["assets/scss/*"],
+   "@services/*": ["assets/js/services/*"],
+   "@templates/*": ["templates/*"],
+   "@testing/*": ["testing/*"],
+   "@utils/*": ["assets/js/utils/*"],
+   "@variables": ["assets/scss/_variables.scss"],
+   "@vendors/*": ["assets/js/vendors/*"],
+   "@web/*": ["public/*"],
+   "~/*": ["node_modules/*"]
+  },
+  "pretty": true,
+  "removeComments": false,
+  "resolveJsonModule": true,
+  "skipLibCheck": true,
+  "sourceMap": true,
+  "strict": true,
+  "strictBindCallApply": true,
+  "strictFunctionTypes": true,
+  "strictNullChecks": true,
+  "strictPropertyInitialization": true,
+  "target": "ES2022",
+  "verbatimModuleSyntax": false
+  // Type Declarations
+  // "types": [
+  //  "node",
+  //  "jquery",
+  //  "bootstrap",
+  //  "@types/select2",
+  //  "vitest/globals",
+  //  "@playwright/test"
+  // ]
+ },
+ "exclude": [
+  "node_modules",
+  "vendor",
+  "var",
+  "dist",
+  "build/coverage",
+  "coverage",
+  "public",
+  "web",
+  "**/*.min.js",
+  "**/*.bundle.js"
+ ],
+ "include": [
+  "assets/**/*",
+  "scripts/**/*",
+  "testing/**/*",
+  "templates/**/*.twig",
+  "**/*.yaml",
+  "*.config.ts",
+  "testing/vitest.setup.ts",
+  "global.d.ts"
+ ],
+ "ts-node": {
+  "esm": true,
+  "experimentalSpecifierResolution": "node"
+ },
+ "vite": {
+  "define": {
+   "__VUE_PROD_DEVTOOLS__": false
+  }
+ },
+ "watchOptions": {
+  "excludeDirectories": [
+   "**/node_modules",
+   "**/vendor",
+   "**/var",
+   "**/coverage",
+   "**/dist",
+   "**/build"
+  ],
+  "fallbackPolling": "dynamicPriority",
+  "watchDirectory": "useFsEvents",
+  "watchFile": "useFsEvents"
+ }
+}

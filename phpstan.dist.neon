@@ -1,0 +1,33 @@
+parameters:
+ level: 6
+ paths:
+  - bin/
+  - config/
+  - src/
+  - scripts/
+  - templates/
+  - testing/
+  - tests/
+
+services:
+ -
+  class: App\PHPStan\Rules\ClassNamingRule
+  tags: [phpstan.rules.rule]
+ -
+  class: App\PHPStan\Rules\VariableNamingRule
+  tags: [phpstan.rules.rule]
+ -
+  class: App\PHPStan\Rules\InterfaceNamingRule
+  tags: [phpstan.rules.rule]
+ -
+  class: App\PHPStan\Rules\TraitNamingRule
+  tags: [phpstan.rules.rule]
+ -
+  class: App\PHPStan\Reporters\ConsoleReporter
+  tags: [phpstan.reporters.reporter]
+ -
+  class: App\PHPStan\Reporters\HtmlReportGenerator
+  tags: [phpstan.reporters.reporter]
+
+extensions:
+    - phpstan-strict-rules

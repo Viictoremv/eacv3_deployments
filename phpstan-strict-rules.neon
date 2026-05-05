@@ -1,0 +1,22 @@
+# PHPStan Strict Rules Configuration
+# This file provides additional strict analysis rules for EarlyAccessSystem v3
+
+parameters:
+  strictRules:
+    strictCalls: true
+    disallowedLooseComparison: true
+    booleansInConditions: true
+    uselessCasts: true
+    requireParentConstructor: true
+    disallowedConstructs: true
+    overwriteVariablesWithLoop: true
+    closureUsesThis: true
+    matchingInheritedMethodNames: true
+    numericOperandsInArithmeticOperators: true
+    strictArraySearch: true
+
+# Healthcare/Medical specific rules for data integrity
+rules:
+  - 'PHPStan\Rules\Functions\CallToFunctionParametersRule'
+  - 'PHPStan\Rules\Methods\CallMethodsRule'
+  - 'PHPStan\Rules\Variables\CompactVariablesRule'

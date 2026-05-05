@@ -1,0 +1,12 @@
+[mysqld]
+# Match Azure behavior
+sql_generate_invisible_primary_key=ON
+sql_require_primary_key=ON
+
+# Require TLS (Azure requires secure transport)
+#require_secure_transport=ON
+
+# Use your local self-signed CA/cert/key
+#ssl-ca=/etc/mysql/certs/ca.pem
+#ssl-cert=/etc/mysql/certs/server-cert.pem
+#ssl-key=/etc/mysql/certs/server-key.pem

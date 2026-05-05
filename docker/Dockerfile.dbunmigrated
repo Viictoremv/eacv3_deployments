@@ -1,0 +1,21 @@
+# Use official MySQL image
+FROM mysql:8.0
+
+# COPY docker/initdb/eacv3parent_dump.sql /docker-entrypoint-initdb.d/init.sql
+COPY docker/initdb/eacv2_dump.sql /docker-entrypoint-initdb.d/
+
+# Add Cofiguration to make the database act more like Azure
+RUN mkdir -p /etc/mysql/conf.d
+COPY docker/mysql/azure-like.cnf /etc/mysql/conf.d/azure-like.cnf
+
+# Add Local Certificat for Local Use
+# RUN mkdir -p /etc/mysql/certs
+# COPY docker/mysql/certs/ca.pem /etc/mysql/certs/ca.pem
+# COPY docker/mysql/certs/server-cert.pem /etc/mysql/certs/server-cert.pem
+# COPY docker/mysql/certs/server-key.pem /etc/mysql/certs/server-key.pem
+# RUN chmod 600 /etc/mysql/certs/*-key.pem
+
+# Expose MySQL port
+EXPOSE 3306
+
+CMD ["mysqld"]

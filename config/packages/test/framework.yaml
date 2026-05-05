@@ -1,0 +1,7 @@
+framework:
+    # Disable trusted hosts validation in test environment
+    trusted_hosts: []
+    # Or alternatively, explicitly allow localhost and 127.0.0.1
+    # trusted_hosts:
+    #     - localhost
+    #     - '127.0.0.1'

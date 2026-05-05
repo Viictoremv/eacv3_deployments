@@ -1,0 +1,41 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
+framework:
+    secret: "%env(APP_SECRET)%"
+    annotations: false
+    http_method_override: false
+    handle_all_throwables: true
+
+    trusted_proxies: "%env(TRUSTED_PROXIES)%"
+    trusted_headers:
+        [
+            "x-forwarded-for",
+            "x-forwarded-proto",
+            "x-forwarded-host",
+            "x-forwarded-port",
+        ]
+
+    # Make Symfony build absolute URLs with your public https host
+    router:
+        default_uri: "%env(APP_URL)%"
+        strict_requirements: true
+
+    # Optional but recommended: restrict allowed Host headers
+    trusted_hosts: "%env(TRUSTED_HOSTS)%"
+
+    # Enables session support. Session starts only if used.
+    session:
+        handler_id: null # "redis.session_handler" # Added Redis Session Handler
+        cookie_secure: auto
+        cookie_samesite: lax
+        save_path: "%kernel.project_dir%/var/sessions"
+        storage_factory_id: session.storage.factory.native
+
+    php_errors:
+        log: true
+
+when@test:
+    framework:
+        test: true
+        trusted_hosts: []
+        session:
+            storage_factory_id: session.storage.factory.mock_file

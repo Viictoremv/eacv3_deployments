@@ -1,0 +1,20 @@
+framework:
+    mailer:
+        dsn: "%env(MAILER_DSN)%"
+        envelope:
+            sender: "%env(MAILER_SENDER)%"
+            # recipients:
+            #     [
+            #         "ben@intheworksandco.com",
+            #         "victor@intheworksandco.com",
+            #         "alex@intheworksandco.com",
+            #         "andrew.vigeant@earlyaccesscare.com",
+            #         "brian.hansen@earlyaccesscare.com",
+            #         "ray.pittman@earlyaccesscare.com",
+            #         "aisha.bigelow@earlyaccesscare.com",
+            #         "john.cropp@earlyaccesscare.com",
+            #         "anne.cropp@earlyaccesscare.com",
+            #         "tiffany.gagnon@earlyaccesscare.com",
+            #     ]
+        headers:
+            from: "%env(MAILER_FROM_NAME)%"

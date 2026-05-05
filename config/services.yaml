@@ -1,0 +1,185 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+  siteDomain: "%env(APP_DOMAIN)%"
+  siteUrl: "%env(APP_URL)%"
+  drugDocumentDirectory: "%kernel.project_dir%/assets/uploads/files/drugDocuments"
+  drugDocumentDirectoryRel: "assets/uploads/files/drugDocuments"
+  resourceDocumentDirectory: "%kernel.project_dir%/assets/uploads/files/resourceDocuments"
+  resourceDocumentDirectoryRel: "assets/uploads/files/resourceDocuments"
+  ridDocumentDirectory: "%kernel.project_dir%/assets/uploads/files/ridDocuments/upload"
+  ridDocumentDirectoryRel: "assets/uploads/files/ridDocuments/upload"
+  ridRedactedDocumentDirectory: "%kernel.project_dir%/assets/uploads/files/ridDocuments/redacted"
+  ridRedactedDocumentDirectoryRel: "assets/uploads/files/ridDocuments/redacted"
+  ridSaeDirectory: "%kernel.project_dir%/assets/uploads/files/ridSae"
+  ridSaeDirectoryRel: "assets/uploads/files/ridSae"
+  ridTemplateDirectory: "%kernel.project_dir%/assets/uploads/files/ridTemplates"
+  ridTemplateDirectoryRel: "assets/uploads/files/ridTemplates"
+  physicianDocumentDirectory: "%kernel.project_dir%/assets/uploads/files/physicianDocuments"
+  physicianDocumentDirectoryRel: "assets/uploads/files/physicianDocuments"
+  susarDirectory: "%kernel.project_dir%/assets/uploads/files/susarDocuments"
+  susarDirectoryRel: "assets/uploads/files/susarDocuments"
+  userGroupContractDirectory: "%kernel.project_dir%/assets/uploads/files/userGroupContracts"
+  userGroupContractDirectoryRel: "assets/uploads/files/userGroupContracts"
+  logoDirectory: "%kernel.project_dir%/assets/uploads/files/logo"
+  logoDirectoryRel: "assets/uploads/files/logo"
+  csvDirectory: "%kernel.project_dir%/assets/csv"
+  csvDirectoryRel: "assets/csv"
+  zipDirectory: "%kernel.project_dir%/assets/uploads/files/zip"
+  zipDirectoryRel: "assets/uploads/files/zip"
+  mail_recipients: "%env(csv:MAIL_RECIPIENTS)%"
+
+services:
+  # default configuration for services in *this* file
+  _defaults:
+    autowire: true # Automatically injects dependencies in your services.
+    autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+    bind:
+      $projectDir: "%kernel.project_dir%"
+      $drugDocumentDirectory: "%drugDocumentDirectory"
+      $drugDocumentDirectoryRel: "%drugDocumentDirectoryRel"
+      $resourceDocumentDirectory: "%resourceDocumentDirectory"
+      $resourceDocumentDirectoryRel: "%resourceDocumentDirectoryRel"
+      $ridDocumentDirectory: "%ridDocumentDirectory%"
+      $ridDocumentDirectoryRel: "%ridDocumentDirectoryRel%"
+      $ridRedactedDocumentDirectory: "%ridRedactedDocumentDirectory%"
+      $ridRedactedDocumentDirectoryRel: "%ridRedactedDocumentDirectoryRel%"
+      $physicianDocumentDirectory: "%physicianDocumentDirectory"
+      $physicianDocumentDirectoryRel: "%physicianDocumentDirectoryRel"
+      $susarDirectory: "%susarDirectory"
+      $susarDirectoryRel: "%susarDirectoryRel"
+      $logoDirectory: "%logoDirectory"
+      $logoDirectoryRel: "%logoDirectoryRel"
+      $siteDomain: "%siteDomain%"
+      $csvDirectory: "%csvDirectory%"
+      $csvDirectoryRel: "%csvDirectoryRel%"
+      $zipDirectory: "%zipDirectory%"
+      $zipDirectoryRel: "%zipDirectoryRel%"
+  # makes classes in src/ available to be used as services
+  # this creates a service per class whose id is the fully-qualified class name
+  App\:
+    resource: "../src/"
+    exclude:
+      - "../src/DependencyInjection/"
+      - "../src/Entity/"
+      - "../src/Kernel.php"
+      - "../src/Tests/"
+      - "../src/Command/ComplexityScan.php"
+
+  App\Controller\:
+    resource: "../src/Controller/"
+    tags: ["controller.service_arguments"]
+
+  App\EventListener\UserActionListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.response }
+
+  App\EventListener\PageLoadListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request }
+      - { name: doctrine.event_listener, event: prePersist }
+
+  App\EventListener\EntityChangeListener:
+    tags:
+      - { name: doctrine.event_listener, event: onFlush }
+
+  App\EventListener\EntityValidationListener:
+    tags:
+      - { name: doctrine.event_listener, event: onFlush }
+      - { name: kernel.event_listener, event: kernel.exception }
+
+  App\EventListener\ErrorListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.exception }
+
+  App\EventListener\FormDataListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.request }
+      - { name: kernel.event_listener, event: kernel.response }
+
+  App\EventListener\RidDrugOrderStatusListener:
+    tags:
+      - { name: doctrine.event_listener, event: onFlush }
+
+  App\EventListener\DrugLotChangeListener:
+    tags:
+      - { name: doctrine.event_listener, event: onFlush }
+
+  App\Util\EntityHelper:
+    arguments:
+      $em: "@doctrine.orm.entity_manager"
+      $verbose: "%kernel.debug%"
+      $debug: "%kernel.debug%"
+      $logger: "@logger"
+
+  mailer.two_factor_mailer:
+    class: App\Mailer\TwoFactorMailer
+    tags:
+      - { name: mailer.two_factor_mailer }
+
+  App\Mailer\CustomMailgunTransportFactory:
+    tags:
+      - { name: "mailer.transport_factory" }
+
+  App\EventListener\LoginListener:
+    tags:
+      - { name: "kernel.event_listener", event: "security.interactive_login" }
+
+  Squirrel\TwigPhpSyntax\PhpSyntaxExtension: ~
+
+  Twig\DeferredExtension\DeferredExtension:
+    tags: [{ name: twig.extension, priority: -100 }]
+  Twig\Extension\StringLoaderExtension:
+    tags: [{ name: twig.extension, priority: -100 }]
+
+  App\EventListener\TwigRenderEventListener:
+    tags:
+      - { name: kernel.event_listener, event: kernel.response, priority: -1024 }
+
+  Symfony\Component\HttpKernel\Profiler\Profiler: "@profiler"
+  App\Profiler\TwigCoverageCollector:
+    arguments:
+      $projectDir: '%kernel.project_dir%'
+    tags:
+      - { name: data_collector, template: '@Debug/Profiler/twig_coverage.html.twig', id: 'app.twig_coverage' }
+
+  App\Twig\CoverageExtension:
+    arguments:
+      $enabled: "@=parameter('kernel.environment') == 'test'"
+    tags: ['twig.extension']
+
+  # Custom Twig loader that tracks template loads
+  App\Twig\CoverageTrackingLoader:
+    decorates: 'twig.loader.native_filesystem'
+    arguments:
+      $decorated: '@.inner'
+      $projectDir: '%kernel.project_dir%'
+      $enabled: "@=parameter('kernel.environment') == 'test'"
+
+  # Coverage file protection service
+  App\Service\CoverageFileProtectionService:
+    arguments:
+      $projectDir: '%kernel.project_dir%'
+      $enabled: true
+  App\EventSubscriber\DevMailerOverrideSubscriber:
+    arguments:
+      $env: "%env(APP_ENV)%"
+      $recipients: "%env(csv:MAIL_RECIPIENTS)%"
+    tags:
+      - { name: "kernel.event_subscriber" }
+
+  redis.client:
+    class: Redis
+    factory:
+      ['Symfony\Component\Cache\Adapter\RedisAdapter', "createConnection"]
+    arguments:
+      - "%env(resolve:REDIS_URL)%"
+
+  redis.session_handler:
+    class: Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler
+    arguments:
+      - "@redis.client"
+      - { prefix: "sess_" }
