@@ -16,11 +16,13 @@ spec:
     server: https://eaceas-q4zby22b.privatelink.eastus.azmk8s.io:443
     namespace: parent-demo
   syncPolicy:
-    # automated: {}           # leave empty for manual sync; remove if you want auto
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
-      - CreateNamespace=false
+      - CreateNamespace=true
       - RespectIgnoreDifferences=true
-  IgnoreDifferences:
+  ignoreDifferences:
     - group: ""
       kind: Secret
       jsonPointers:

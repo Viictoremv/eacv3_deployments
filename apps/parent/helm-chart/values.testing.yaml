@@ -3,24 +3,18 @@ image:
   tag: latest
   pullPolicy: Always
 
-ingress:
+gateway:
+  name: eac-gateway-nonprod
+  sectionName: testing-parent
   enabled: true
-  className: azure-application-gateway
-  frontend:
-    name: private-frontend
-    usePrivateIP: "true"
-  annotations:
-    appgw.ingress.kubernetes.io/appgw-frontend-ip: private-frontend
-    appgw.ingress.kubernetes.io/ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-nonprod
+  className: kgateway
   hosts:
-    - host: testing.parent.v3.earlyaccesscare.com
-      paths:
-        - path: /
-          pathType: Prefix
+    - testing.parent.v3.earlyaccesscare.com
   tls:
-    - hosts: [testing.parent.v3.earlyaccesscare.com]
-      secretName: parent-testing-tls
+    secretName: parent-testing-tls
+    clusterIssuer: letsencrypt-nonprod
+  # testing uses internal ILB
+  internal: true
 
 envFrom:
   - secretRef:

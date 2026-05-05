@@ -47,12 +47,39 @@ spec:
         - port: 53
           protocol: TCP
     {{- end }}
+
+    {{- if .Values.otelCollector.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app: easv3-child-otel-collector
+      ports:
+        - port: 4317
+          protocol: TCP
+        - port: 4318
+          protocol: TCP
+    {{- end }}
+
+    {{- if .Values.networkPolicy.allowDash0Collector.enabled }}
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.networkPolicy.allowDash0Collector.cidr }}
+      ports:
+        {{- range .Values.networkPolicy.allowDash0Collector.ports }}
+        - port: {{ . }}
+          protocol: TCP
+        {{- end }}
+    {{- end }}
+
     {{- range .Values.networkPolicy.allowEgressCidrs }}
     - to:
         - ipBlock:
             cidr: {{ .cidr }}
       ports:
         - port: {{ .port }}
+          {{- if .endPort }}
+          endPort: {{ .endPort }}
+          {{- end }}
           protocol: TCP
     {{- end }}
 {{- end }}

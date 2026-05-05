@@ -12,6 +12,7 @@ spec:
       maxUnavailable: 0
       maxSurge: 1
   replicas: {{ .Values.replicaCount.web }}
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: {{ include "eas-app-v3-parent.name" . }}-web
@@ -22,6 +23,8 @@ spec:
       annotations:
         secret.reloader.stakater.com/reload: "app-env-secret"
     spec:
+      securityContext:
+        fsGroup: 33   # align with child chart for writable AzureFile mounts
       volumes:
         - name: akv-secrets
           csi:
@@ -49,7 +52,7 @@ spec:
               port: 80
               httpHeaders:
                 - name: Host
-                  value: {{ (index .Values.ingress.hosts 0).host | quote }}
+                  value: {{ index .Values.gateway.hosts 0 | quote }}
                 - name: X-Forwarded-Proto
                   value: https
             initialDelaySeconds: 60
@@ -62,7 +65,7 @@ spec:
               port: 80
               httpHeaders:
                 - name: Host
-                  value: {{ (index .Values.ingress.hosts 0).host | quote }}
+                  value: {{ index .Values.gateway.hosts 0 | quote }}
                 - name: X-Forwarded-Proto
                   value: https
             initialDelaySeconds: 25

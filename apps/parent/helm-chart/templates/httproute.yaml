@@ -7,7 +7,7 @@ metadata:
 spec:
   parentRefs:
     - name: {{ .Values.gateway.name }}
-      namespace: kgateway-system        # IMPORTANT — shared gateway lives here
+      namespace: kgateway-system        # Gateway resources are managed in kgateway-system
       sectionName: {{ .Values.gateway.sectionName }} # Bind specifically to the HTTPS listener
 
   hostnames:

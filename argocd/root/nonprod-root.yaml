@@ -8,14 +8,17 @@ spec:
   source:
     repoURL: git@github.com:Early-Access-Care-LLC/easv3_deployments.git
     targetRevision: main
-    path: argocd/envs
+    path: argocd
     directory:
       recurse: true
-      include: "{dev,testing,staging,transition}/**/*.yaml"
+      include: "{config/*.yaml,envs/dev/**/*.yaml,envs/testing/**/*.yaml,envs/staging/**/*.yaml,envs/transition/**/*.yaml,projects/dev.yaml,projects/testing.yaml,projects/staging.yaml,projects/transition.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - PrunePropagationPolicy=foreground
       - PruneLast=true

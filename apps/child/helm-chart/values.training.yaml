@@ -1,6 +1,6 @@
 image:
   repository: earlyaccesscare/easv3_child_web
-  tag: dev-main-1201
+  tag: dev-main-1792
   pullPolicy: Always
 
 # This environment name is used with .Values.publicEnvironments
@@ -25,6 +25,14 @@ envFrom:
       name: app-env-secret
 
 env:
+  - name: REDIS_CLUSTER_ENABLED
+    value: "true"
+  - name: REDIS_TLS_ENABLED
+    value: "true"
+  - name: REDIS_TLS_VERIFY_PEER
+    value: "false"
+  - name: REDIS_TLS_VERIFY_PEER_NAME
+    value: "false"
   - name: OTEL_SDK_DISABLED
     value: "false"
   - name: OTEL_TRACES_EXPORTER
@@ -32,7 +40,7 @@ env:
   - name: OTEL_EXPORTER_OTLP_PROTOCOL
     value: "http/protobuf"
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: "http://child-training-eas-app-v3-child-otel-collector:4318"
+    value: "http://child-training-easv3-child-otel-collector:4318"
   - name: OTEL_EXPORTER_OTLP_TRACES_TIMEOUT
     value: "30000"
   - name: OTEL_SERVICE_NAME
@@ -74,6 +82,8 @@ networkPolicy:
     - { cidr: "0.0.0.0/0", port: 443 }
     - { cidr: "0.0.0.0/0", port: 80 }
     - { cidr: "10.0.34.128/26", port: 6379 }
+    - { cidr: "10.0.34.128/26", port: 10000 }
+    - { cidr: "10.0.34.128/26", port: 8500, endPort: 8599 }
     - { cidr: "10.0.0.0/16", port: 18000 }
 
 # OpenTelemetry Collector for training environment

@@ -1,4 +1,4 @@
-FROM almalinux:8
+FROM almalinux:8.10
 
 # Ensure all packages are up to date to reduce vulnerabilities
 RUN dnf -y update && dnf clean all
@@ -11,11 +11,13 @@ RUN dnf install -y epel-release && \
     dnf module enable php:remi-8.2 -y && \
     dnf install -y php php-cli php-common php-mbstring php-xml php-curl php-mysqlnd \
                    php-zip php-bcmath php-soap php-intl php-readline php-fpm php-opcache \
-                   php-pecl-xdebug && \
+                   php-pecl-xdebug php-devel php-pear && \
+    pecl install opentelemetry && \
+    echo "extension=/opt/remi/php82/root/usr/lib64/php/modules/opentelemetry.so" > /etc/php.d/45-opentelemetry.ini && \
     dnf clean all
 
-# Enable Xdebug for CLI usage
-RUN echo "zend_extension=xdebug.so" >> /etc/php.d/15-xdebug.ini && \
+# Enable Xdebug for CLI usage (overwrite to avoid double-load from php-pecl-xdebug's own ini)
+RUN echo "zend_extension=xdebug.so" > /etc/php.d/15-xdebug.ini && \
     echo "xdebug.mode=develop,debug" >> /etc/php.d/15-xdebug.ini && \
     echo "xdebug.start_with_request=yes" >> /etc/php.d/15-xdebug.ini && \
     echo "xdebug.discover_client_host=true" >> /etc/php.d/15-xdebug.ini

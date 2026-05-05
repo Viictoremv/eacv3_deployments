@@ -1,300 +1,140 @@
-# Early Access System v3 - Developer Environment Makefile
-# Comprehensive test environment setup and development tools
+# ===== EASV3 Makefile =====
+# Runs commands inside containers via docker/coder/coder-exec.sh
+
+# Helper script
+SCRIPT          ?= ./docker/coder/coder-exec.sh
+
+# Container names (match docker-compose)
+CHILD_WEB       ?= easv3_child_web
+PARENT_WEB      ?= easv3_parent_web
+CHILD_DB        ?= easv3_child_db
+PARENT_DB       ?= easv3_parent_db
+NGINX_SVC       ?= easv3_nginx
+CODER_SVC       ?= easv3_coder
+
+.PHONY: help list easv3 \
+        php/console parent/php/console \
+        php/unit parent/php/unit \
+        cache/clear parent/cache/clear \
+        web/shell parent/web/shell \
+        db/shell parent/db/shell \
+        nginx/test
+
+help:
+	@echo "Usage:"
+	@echo "  make list                              # show supported containers"
+	@echo "  make php/console ARGS='cache:clear'    # child app console"
+	@echo "  make parent/php/console ARGS='...'     # parent app console"
+	@echo "  make php/unit ARGS='-v'                # child PHPUnit"
+	@echo "  make parent/php/unit ARGS='-v'         # parent PHPUnit"
+	@echo "  make cache/clear                       # child cache clear"
+	@echo "  make parent/cache/clear                # parent cache clear"
+	@echo "  make web/shell | parent/web/shell      # interactive bash"
+	@echo "  make db/shell | parent/db/shell        # mysql shell"
+	@echo "  make nginx/test                        # nginx -t"
+	@echo "  make coder                             # connect coder"
+	@echo "  make down                              # stop and remove containers"
+	@echo "  make down-full                         # down, remove volumes"
+	@echo "  make up-full                           # up, build fresh"
+	@echo "  make full-reset                        # down, remove volumes, up"
+	@echo "  make env-update                        # update environment"
+	@echo "  make help                              # this help"
+	@echo "  make up                                # start containers"
+	@echo "Examples:"
+	@echo '  make easv3 php/unit'
+	@echo '  make php/console ARGS="doctrine:migrations:migrate"'
+	@echo '  make parent/php/unit ARGS="-v"'
+
+# No-op namespace so "make easv3 php/unit" works
+easv3:
+	@true
+
+# Connect to Coder Container
+coder:
+	@echo "🔌 Opening VS Code Remote-SSH"
+	@code --remote ssh-remote+dev@localhost:2222 /workspace
+
+coder-parent:
+	@echo "🔌 Opening VS Code Remote-SSH"
+	@code --remote ssh-remote+dev@localhost:2222 /workspace/parent
+
+coder-child:
+	@echo "🔌 Opening VS Code Remote-SSH"
+	@code --remote ssh-remote+dev@localhost:2222 /workspace/child
+
+# Clean Up Environment
+down:
+	@echo "🔌 Opening VS Code Remote-SSH"
+	@docker-compose down -v
+
+# Start Environment
+up:
+	@docker-compose up -d --build
+
+# Full Delete Environment
+
+down-full: down
+	@docker volume rm easv3_code easv3parent_code
+	@docker rmi -f earlyaccesscare/easv3_child_web earlyaccesscare/eas_v3parent_db earlyaccesscare/eas_v3parent_web earlyaccesscare/easv3_child_db earlyaccesscare/easv3_coder earlyaccesscare/easv3_nginx earlyaccesscare/phpmyadmin
+
+# Initialize Environment
+up-full: 
+	@docker volume create easv3_code
+	@docker volume create easv3parent_code
+	@$(MAKE) up
+
+# Full Reset Environment
+full-reset: down-full up-full
+
+# ENV Update
+env-update:
+	@./setup/encrypt-upload-env.sh
+
+# ENV Upload (alias for clarity)
+env-upload:
+	@./setup/encrypt-upload-env.sh
+
+# ENV Download (pulls and decrypts from Azure)
+env-download:
+	@./setup/init-bash.sh
+
+list:
+	@$(SCRIPT) --list
 
-.PHONY: help install setup test lint clean coverage quality fix security build dev
+# ---------- Symfony Console ----------
+php/console:
+	@$(SCRIPT) $(CHILD_WEB) "php bin/console $(ARGS)"
 
-# Colors for output
-BLUE := \033[0;34m
-GREEN := \033[0;32m
-YELLOW := \033[0;33m
-RED := \033[0;31m
-NC := \033[0m # No Color
+parent/php/console:
+	@$(SCRIPT) $(PARENT_WEB) "php bin/console $(ARGS)"
 
-# Default target
-.DEFAULT_GOAL := help
+# Common shortcuts
+cache/clear:
+	@$(MAKE) php/console ARGS="cache:clear"
 
-#==============================================================================
-# HELP
-#==============================================================================
+parent/cache/clear:
+	@$(MAKE) parent/php/console ARGS="cache:clear"
 
-# Default target
-help: ## Show this help message
-	@echo "Early Access System v3 - Developer Environment"
-	@echo "================================================"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+# ---------- PHPUnit ----------
+php/unit:
+	@$(SCRIPT) $(CHILD_WEB) "if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit $(ARGS); else php bin/phpunit $(ARGS); fi"
 
-# =============================================================================
-# INSTALLATION & SETUP
-# =============================================================================
+parent/php/unit:
+	@$(SCRIPT) $(PARENT_WEB) "if [ -x vendor/bin/phpunit ]; then vendor/bin/phpunit $(ARGS); else php bin/phpunit $(ARGS); fi"
 
-install: ## Install all dependencies (PHP + Node.js)
-	@echo "Installing PHP dependencies..."
-	composer install --prefer-dist --no-scripts --no-interaction --no-progress --optimize-autoloader
-	@echo "Installing Node.js dependencies..."
-	npm install
-	@echo "✅ All dependencies installed"
+# ---------- Shell helpers ----------
+web/shell:
+	@docker exec -it $(CHILD_WEB) bash
 
-setup: install ## Complete development environment setup
-	@echo "Setting up development environment..."
-	php bin/console doctrine:database:create --if-not-exists
-	php bin/console doctrine:migrations:migrate --no-interaction
-	php bin/console cache:clear
-	npm run build
-	@echo "✅ Development environment ready"
+parent/web/shell:
+	@docker exec -it $(PARENT_WEB) bash
 
-setup-test: ## Setup test environment
-	@echo "Setting up test environment..."
-	php bin/console --env=test doctrine:database:create --if-not-exists
-	php bin/console --env=test doctrine:migrations:migrate --no-interaction
-	php bin/console --env=test cache:clear
-	@echo "✅ Test environment ready"
+db/shell:
+	@docker exec -it $(CHILD_DB) mysql -u root -p
 
-# =============================================================================
-# PHP TESTING & QUALITY ASSURANCE
-# =============================================================================
+parent/db/shell:
+	@docker exec -it $(PARENT_DB) mysql -u root -p
 
-test: ## Run all PHP tests
-	composer test
+nginx/test:
+	@$(SCRIPT) $(NGINX_SVC) "nginx -t"
 
-test-unit: ## Run PHP unit tests only
-	composer test:unit
-
-test-integration: ## Run PHP integration tests only
-	composer test:integration
-
-test-feature: ## Run PHP feature tests only
-	composer test:feature
-
-test-coverage: ## Generate PHP test coverage report
-	composer test:coverage
-
-test-coverage-check: ## Check PHP test coverage with text output
-	composer test:coverage-check
-
-phpstan: ## Run PHPStan static analysis
-	composer phpstan
-
-rector: ## Run Rector code analysis (dry-run)
-	composer rector
-
-rector-fix: ## Apply Rector fixes
-	vendor/bin/rector process src
-
-cs-fixer: ## Run PHP CS Fixer
-	composer cs-fixer
-
-cs-fixer-dry: ## Run PHP CS Fixer in dry-run mode
-	vendor/bin/php-cs-fixer fix --dry-run --diff
-
-infection: ## Run Infection mutation testing
-	composer infection
-
-# =============================================================================
-# JAVASCRIPT/NODE.JS TESTING
-# =============================================================================
-
-test-js: ## Run JavaScript tests with Vitest
-	npm run test
-
-test-js-watch: ## Run JavaScript tests in watch mode
-	npm run test:watch
-
-test-js-coverage: ## Generate JavaScript test coverage
-	npm run test:coverage
-
-test-js-ui: ## Run JavaScript tests with UI
-	npm run test:ui
-
-test-e2e: ## Run end-to-end tests with Playwright
-	npm run test:e2e
-
-test-e2e-ui: ## Run Playwright tests with UI
-	npx playwright test --ui
-
-test-monitoring: ## Run monitoring tests with Checkly
-	npm run test:monitoring
-
-test-report: ## Show Playwright test report
-	npm run test:report
-
-test-all: ## Run all tests (PHP + JS + E2E)
-	npm run test:all
-
-test-ci: ## Run tests for CI environment
-	npm run test:ci
-
-# =============================================================================
-# CODE QUALITY & LINTING
-# =============================================================================
-
-lint: ## Run all linters
-	npm run lint
-	npm run stylelint
-	npm run test:contrast
-
-lint-fix: ## Fix all linting issues
-	npm run lint:fix
-	npm run stylelint:fix
-
-contrast-test: ## Run WCAG contrast ratio validation
-	npm run test:contrast
-
-lint-js: ## Run JavaScript/TypeScript linting
-	npm run lint
-
-lint-js-fix: ## Fix JavaScript/TypeScript linting issues
-	npm run lint:fix
-
-lint-css: ## Run CSS/SCSS linting
-	npm run stylelint
-
-lint-css-fix: ## Fix CSS/SCSS linting issues
-	npm run stylelint:fix
-
-# =============================================================================
-# SECURITY & VALIDATION
-# =============================================================================
-
-security: ## Run all security checks
-	npm run security:audit
-	composer audit
-
-security-fix: ## Fix security vulnerabilities
-	npm run security:fix
-
-security-audit: ## Run npm security audit
-	npm run security:audit
-
-validate: ## Run package validation
-	npm run validate
-
-validate-packages: ## Validate package configurations
-	npm run validate:packages
-
-validate-scripts: ## Validate script configurations
-	npm run validate:scripts
-
-# =============================================================================
-# BUILD & DEVELOPMENT
-# =============================================================================
-
-dev: ## Start development server
-	npm run dev
-
-build: ## Build assets for production
-	npm run build
-
-preview: ## Preview production build
-	npm run preview
-
-# =============================================================================
-# SYMFONY SPECIFIC
-# =============================================================================
-
-symfony-cache-clear: ## Clear Symfony cache
-	php bin/console cache:clear
-
-symfony-cache-warmup: ## Warmup Symfony cache
-	php bin/console cache:warmup
-
-symfony-assets: ## Install Symfony assets
-	php bin/console assets:install
-
-symfony-db-create: ## Create database
-	php bin/console doctrine:database:create
-
-symfony-db-migrate: ## Run database migrations
-	php bin/console doctrine:migrations:migrate --no-interaction
-
-symfony-db-fixtures: ## Load database fixtures
-	php bin/console doctrine:fixtures:load --no-interaction
-
-symfony-make-entity: ## Create new Doctrine entity
-	php bin/console make:entity
-
-symfony-make-controller: ## Create new controller
-	php bin/console make:controller
-
-symfony-make-form: ## Create new form
-	php bin/console make:form
-
-symfony-make-migration: ## Create new migration
-	php bin/console make:migration
-
-# =============================================================================
-# UTILITIES & MAINTENANCE
-# =============================================================================
-
-find-tests: ## Find all test files in the project
-	npm run find:tests
-
-activities-archive: ## Archive activities using bash script
-	npm run activities:archive
-
-coverage-badge: ## Generate coverage badge
-	composer coverage:badge
-
-clean: ## Clean all caches and temporary files (preserves protected coverage data)
-	@echo "Cleaning caches and temporary files..."
-	@echo "⚠️  Preserving protected coverage files..."
-	rm -rf var/cache/*
-	rm -rf var/log/*
-	rm -rf node_modules/.cache
-	rm -rf build/
-	# Note: coverage/ directory is protected and preserved during cleanup
-	npm run build
-	php bin/console cache:clear
-	@echo "✅ Cleanup complete (coverage data preserved)"
-
-reset: clean install setup ## Reset entire development environment
-	@echo "✅ Development environment reset complete"
-
-# =============================================================================
-# DOCKER SUPPORT (if using Docker)
-# =============================================================================
-
-docker-build: ## Build Docker containers
-	docker-compose build
-
-docker-up: ## Start Docker containers
-	docker-compose up -d
-
-docker-down: ## Stop Docker containers
-	docker-compose down
-
-docker-logs: ## View Docker logs
-	docker-compose logs -f
-
-# =============================================================================
-# QUICK TESTING COMBINATIONS
-# =============================================================================
-
-test-quick: ## Run quick tests (unit + JS)
-	composer test:unit
-	npm run test
-
-test-full: ## Run full test suite
-	make test-coverage
-	make test-js-coverage
-	make test-e2e
-	make phpstan
-	make lint
-
-test-pre-commit: ## Run tests before commit
-	make lint
-	make test-quick
-	make security-audit
-
-# =============================================================================
-# DEVELOPMENT WORKFLOW
-# =============================================================================
-
-pre-commit: test-pre-commit ## Pre-commit checks
-
-pre-push: test-full ## Pre-push full validation
-
-release-check: ## Check if ready for release
-	make test-full
-	make security
-	make validate
-	@echo "✅ Release checks passed"

@@ -19,6 +19,8 @@ persistentVolume:
     storageClassName: ""  # set in env values if needed
 
 gateway:
+  name: ""
+  sectionName: https
   enabled: true
   className: kgateway
   hosts: []     # to be overridden per environment
@@ -43,6 +45,7 @@ networkPolicy:
   allowFromNamespaces:
     - kube-system         # e.g., metrics, sidecars, etc.
     - istio-system        # if you later front with Istio ingress gateway
+    - kgateway-system     # allow traffic from shared Kgateway pods
 
   allowFromIpCidrs:
     - "10.0.40.0/24"
@@ -54,6 +57,8 @@ networkPolicy:
     - { cidr: "0.0.0.0/0", port: 443 }
     - { cidr: "0.0.0.0/0", port: 80 }
     - { cidr: "10.0.34.128/26", port: 6379 }
+    - { cidr: "10.0.34.128/26", port: 10000 }
+    - { cidr: "10.0.34.128/26", port: 8500, endPort: 8599 }
 
 akv:
   secretProviderClass: []

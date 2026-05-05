@@ -10,6 +10,9 @@ environment: ""
 replicaCount:
   web: 1
 
+resources:
+  web: {}
+
 service:
   web:
     type: ClusterIP
@@ -61,11 +64,18 @@ networkPolicy:
     - "10.0.33.0/24"
 
   allowDNS: true
+  allowDash0Collector:
+    enabled: false
+    cidr: "10.0.0.0/16"
+    ports:
+      - 4318
   allowEgressCidrs:
     - { cidr: "10.0.34.64/26", port: 3306 }
     - { cidr: "0.0.0.0/0", port: 443 }
     - { cidr: "0.0.0.0/0", port: 80 }
     - { cidr: "10.0.34.128/26", port: 6379 }
+    - { cidr: "10.0.34.128/26", port: 10000 }
+    - { cidr: "10.0.34.128/26", port: 8500, endPort: 8599 }
 
 akv:
   secretProviderClass: []

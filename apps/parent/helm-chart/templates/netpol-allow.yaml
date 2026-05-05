@@ -40,6 +40,9 @@ spec:
             cidr: {{ .cidr }}
       ports:
         - port: {{ .port }}
+          {{- if .endPort }}
+          endPort: {{ .endPort }}
+          {{- end }}
           protocol: TCP
     {{- end }}
 {{- end }}

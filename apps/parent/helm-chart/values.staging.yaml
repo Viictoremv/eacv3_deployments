@@ -3,24 +3,18 @@ image:
   tag: latest
   pullPolicy: Always
 
-ingress:
+gateway:
+  name: eac-gateway-nonprod
+  sectionName: staging-parent
   enabled: true
-  className: azure-application-gateway
-  frontend:
-    name: private-frontend
-    usePrivateIP: "true"
-  annotations:
-    appgw.ingress.kubernetes.io/appgw-frontend-ip: private-frontend
-    appgw.ingress.kubernetes.io/ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-nonprod
+  className: kgateway
   hosts:
-    - host: staging.parent.v3.earlyaccesscare.com
-      paths:
-        - path: /
-          pathType: Prefix
+    - staging.parent.v3.earlyaccesscare.com
   tls:
-    - hosts: [staging.parent.v3.earlyaccesscare.com]
-      secretName: parent-staging-tls
+    secretName: parent-staging-tls
+    clusterIssuer: letsencrypt-nonprod
+  # staging uses internal ILB
+  internal: true
 
 envFrom:
   - secretRef:

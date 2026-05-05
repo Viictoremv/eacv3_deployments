@@ -3,24 +3,18 @@ image:
   tag: latest
   pullPolicy: Always
 
-ingress:
+gateway:
+  name: eac-gateway-prod
+  sectionName: training-parent
   enabled: true
-  className: azure-application-gateway
-  frontend:
-    name: appGatewayFrontendIP
-    usePrivateIP: false
-  annotations:
-    appgw.ingress.kubernetes.io/appgw-frontend-ip: appGatewayFrontendIP
-    appgw.ingress.kubernetes.io/ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+  className: kgateway
   hosts:
-    - host: training.parent.v3.earlyaccesscare.com
-      paths:
-        - path: /
-          pathType: Prefix
+    - training.parent.v3.earlyaccesscare.com
   tls:
-    - hosts: [training.parent.v3.earlyaccesscare.com]
-      secretName: parent-training-tls
+    secretName: parent-training-tls
+    clusterIssuer: letsencrypt-prod
+  # Training is a public environment
+  internal: false
 
 envFrom:
   - secretRef:

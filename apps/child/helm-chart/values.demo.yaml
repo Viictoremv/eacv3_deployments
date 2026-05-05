@@ -1,32 +1,38 @@
 image:
   repository: earlyaccesscare/easv3_child_web
-  tag: dev-main-631
+  tag: dev-main-1792
   pullPolicy: Always
 
-ingress:
+# This environment name is used with .Values.publicEnvironments
+# to determine if the Gateway should be internal or public.
+environment: demo
+
+gateway:
+  name: eac-gateway-prod
+  sectionName: demo-child
   enabled: true
-  className: azure-application-gateway
-  frontend:
-    name: appGatewayFrontendIP
-    usePrivateIP: false
-  annotations:
-    appgw.ingress.kubernetes.io/appgw-frontend-ip: appGatewayFrontendIP
-    appgw.ingress.kubernetes.io/ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+  className: kgateway
   hosts:
-    - host: demo.v3.earlyaccesscare.com
-      paths:
-        - path: /
-          pathType: Prefix
+    - demo.v3.earlyaccesscare.com
   tls:
-    - hosts: [demo.v3.earlyaccesscare.com]
-      secretName: child-demo-tls
+    secretName: child-demo-tls
+    clusterIssuer: letsencrypt-prod
+  # demo is a public environment
+  internal: false
 
 envFrom:
   - secretRef:
       name: app-env-secret
 
 env:
+  - name: REDIS_CLUSTER_ENABLED
+    value: "true"
+  - name: REDIS_TLS_ENABLED
+    value: "true"
+  - name: REDIS_TLS_VERIFY_PEER
+    value: "false"
+  - name: REDIS_TLS_VERIFY_PEER_NAME
+    value: "false"
   - name: OTEL_SDK_DISABLED
     value: "false"
   - name: OTEL_TRACES_EXPORTER
@@ -34,7 +40,9 @@ env:
   - name: OTEL_EXPORTER_OTLP_PROTOCOL
     value: "http/protobuf"
   - name: OTEL_EXPORTER_OTLP_ENDPOINT
-    value: "http://child-demo-eas-app-v3-child-otel-collector:4318"
+    value: "http://child-demo-easv3-child-otel-collector:4318"
+  - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+    value: "http://child-demo-easv3-child-otel-collector:4318/v1/traces"
   - name: OTEL_EXPORTER_OTLP_TRACES_TIMEOUT
     value: "30000"
   - name: OTEL_SERVICE_NAME
@@ -43,10 +51,18 @@ env:
     value: "service.namespace=eac,service.version=demo,deployment.environment=demo"
   - name: OTEL_PHP_AUTOLOAD_ENABLED
     value: "true"
+  - name: OTEL_PHP_DISABLED_INSTRUMENTATIONS
+    value: ""
   - name: OTEL_PROPAGATORS
     value: "tracecontext,baggage"
   - name: OTEL_TRACES_SAMPLER
     value: "parentbased_always_on"
+  - name: OTEL_PHP_INTERNAL_METRICS_ENABLED
+    value: "true"
+  - name: OTEL_LOG_LEVEL
+    value: "info"
+  - name: PHP_INI_SCAN_DIR
+    value: "/etc/opt/remi/php82/php.d:/var/www/html/config"
 
 persistentVolume:
   web:
@@ -55,6 +71,30 @@ persistentVolume:
 
 akv:
   secretProviderClass: akv-child-demo   # override per env
+
+networkPolicy:
+  enabled: true
+  allowRulesEnabled: true
+
+  allowFromNamespaces:
+    - kube-system
+    - istio-system
+    - kgateway-system
+
+  allowFromIpCidrs:
+    - "10.0.40.0/24"
+    - "10.0.33.0/24"
+
+  allowDNS: true
+
+  allowEgressCidrs:
+    - { cidr: "10.0.34.64/26", port: 3306 }
+    - { cidr: "0.0.0.0/0", port: 443 }
+    - { cidr: "0.0.0.0/0", port: 80 }
+    - { cidr: "10.0.34.128/26", port: 6379 }
+    - { cidr: "10.0.34.128/26", port: 10000 }
+    - { cidr: "10.0.34.128/26", port: 8500, endPort: 8599 }
+    - { cidr: "10.0.0.0/16", port: 18000 }
 
 # Update 10/6/2025
 

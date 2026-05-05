@@ -1,0 +1,9 @@
+# Ignore all .env.local.override files in any env directory
+env/**/.env.local.override
+env/**/*.enc
+env/**/*.b64
+
+# Ignore DB Dumps used for Dev Containers
+docker/initdb/child/00-childdbload.sql
+docker/initdb/parent/00-parentdbload.sql
+docker/initdb/eacv2_db/*.sql

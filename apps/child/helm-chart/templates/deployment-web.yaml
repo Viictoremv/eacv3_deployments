@@ -7,7 +7,7 @@ metadata:
     release: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount.web }}
-  revisionHistoryLimit: 3
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: {{ include "eas-app-v3-child.name" . }}-web
@@ -48,6 +48,10 @@ spec:
               mountPath: /var/www/html/public/assets/uploads
           ports:
             - containerPort: 80
+          {{- with .Values.resources.web }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           readinessProbe:
             httpGet:
               path: /health

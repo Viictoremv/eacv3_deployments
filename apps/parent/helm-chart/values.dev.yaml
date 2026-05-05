@@ -5,7 +5,7 @@ image:
 
 gateway:
   name: eac-gateway-nonprod
-  sectionName: dev-parent 
+  sectionName: dev-parent
   enabled: true
   className: kgateway
   hosts:

@@ -1,6 +1,6 @@
 image:
   repository: earlyaccesscare/easv3_child_web
-  tag: dev-main-1105
+  tag: dev-main-1792
   pullPolicy: Always
 
 # This environment name is used with .Values.publicEnvironments
@@ -9,7 +9,7 @@ environment: transition
 
 gateway:
   name: eac-gateway-nonprod
-  sectionName: transition-child 
+  sectionName: transition-child
   enabled: true
   className: kgateway
   hosts:
@@ -23,6 +23,16 @@ gateway:
 envFrom:
   - secretRef:
       name: app-env-secret
+
+env:
+  - name: REDIS_CLUSTER_ENABLED
+    value: "true"
+  - name: REDIS_TLS_ENABLED
+    value: "true"
+  - name: REDIS_TLS_VERIFY_PEER
+    value: "false"
+  - name: REDIS_TLS_VERIFY_PEER_NAME
+    value: "false"
 
 persistentVolume:
   web:
@@ -52,6 +62,8 @@ networkPolicy:
     - { cidr: "0.0.0.0/0", port: 443 }
     - { cidr: "0.0.0.0/0", port: 80 }
     - { cidr: "10.0.34.128/26", port: 6379 }
+    - { cidr: "10.0.34.128/26", port: 10000 }
+    - { cidr: "10.0.34.128/26", port: 8500, endPort: 8599 }
     - { cidr: "10.0.0.0/16", port: 18000 }
     - { cidr: "10.0.0.0/16", port: 9977 }
     - { cidr: "10.0.0.0/16", port: 9978 }

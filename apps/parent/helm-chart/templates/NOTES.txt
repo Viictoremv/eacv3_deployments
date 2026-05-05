@@ -1,4 +1,4 @@
-{{- if .Values.ingress.enabled }}
+{{- if .Values.gateway.enabled }}
 Welcome to the Early Access System v3 Parent app! 🎉
 
 Release:  {{ .Release.Name }}
@@ -8,12 +8,12 @@ App Ver:  {{ .Chart.AppVersion }}
 ─────────────────────────────────────────────
 🌐 Application URL
 ─────────────────────────────────────────────
-{{- range .Values.ingress.hosts }}
-  - https://{{ .host }}
+{{- range .Values.gateway.hosts }}
+  - https://{{ . }}
 {{- end }}
 
 TLS certificates are managed via cert-manager:
-  ClusterIssuer → {{ index .Values.ingress.annotations "cert-manager.io/cluster-issuer" }}
+  ClusterIssuer → {{ .Values.gateway.tls.clusterIssuer }}
 
 ─────────────────────────────────────────────
 🔍 How to check status
@@ -21,11 +21,11 @@ TLS certificates are managed via cert-manager:
 Pods:
   kubectl -n {{ .Release.Namespace }} get pods -l app={{ include "eas-app-v3-parent.name" . }}-web
 
-Ingress:
-  kubectl -n {{ .Release.Namespace }} get ingress {{ include "eas-app-v3-parent.fullname" . }}-ingress
+Gateway bindings (HTTPRoute):
+  kubectl -n {{ .Release.Namespace }} get httproute {{ include "eas-app-v3-parent.fullname" . }}-httproute
 
 Certificate Secret:
-  kubectl -n {{ .Release.Namespace }} get secret {{ (index .Values.ingress.tls 0).secretName }}
+  kubectl -n kgateway-system get secret {{ .Values.gateway.tls.secretName }}
 
 ─────────────────────────────────────────────
 📦 Storage
@@ -43,7 +43,7 @@ No PersistentVolumeClaim created (ephemeral storage only).
 🔒 Network Policy
 ─────────────────────────────────────────────
 Ingress:
-  - Allowed from kube-system, istio-system, and App Gateway subnet
+  - Allowed from kube-system, istio-system, kgateway-system, and configured CIDRs
 Egress:
   - kube-dns (UDP/TCP 53)
   - MySQL (TCP 3306)
@@ -58,5 +58,5 @@ Egress:
     kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "eas-app-v3-parent.fullname" . }}-web
 
 {{- else }}
-Ingress is disabled. To expose this app, set `ingress.enabled=true` in your values.yaml.
+Gateway exposure is disabled. To expose this app, set `gateway.enabled=true` in your values.yaml.
 {{- end }}

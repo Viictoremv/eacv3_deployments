@@ -56,7 +56,7 @@ run_migrations() {
   # --- Wait for MySQL to be ready before Doctrine touches it ---
   wait_for_db
 
-  PENDING=$(php bin/console doctrine:migrations:status --no-interaction | grep "New" | awk '{print $5}')
+  PENDING=$(php -d memory_limit=1G bin/console doctrine:migrations:status --no-interaction | grep "New" | awk '{print $5}')
 
   if [[ "$PENDING" == "0" ]]; then
     echo "✅ [$APP_NAME] No new migrations to run."
@@ -65,6 +65,9 @@ run_migrations() {
     php -d memory_limit=1G bin/console doctrine:migrations:migrate --no-interaction
     echo "✅ [$APP_NAME] Migrations completed successfully."
   fi
+
+  # Cache clearing removed - array cache clears automatically after each request
+  # Manual cache:clear no longer needed with cache.adapter.array configuration
 }
 
 run_migrations "Child App" "/workspace/child"

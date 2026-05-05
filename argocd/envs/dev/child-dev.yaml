@@ -23,8 +23,9 @@ spec:
     server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
     namespace: child-dev
   syncPolicy:
-    # automated:
-    #     prune: true 
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       # - PrunePropagationPolicy=foreground

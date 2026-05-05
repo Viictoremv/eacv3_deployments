@@ -16,7 +16,9 @@ spec:
     server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
     namespace: parent-dev
   syncPolicy:
-    # automated: {}           # leave empty for manual sync; remove if you want auto
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true

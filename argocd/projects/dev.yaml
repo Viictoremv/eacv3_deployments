@@ -12,6 +12,8 @@ spec:
       server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
     - namespace: child-dev
       server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
+    - namespace: kgateway-system
+      server: https://eaceas-d9ansove.privatelink.eastus.azmk8s.io:443
   clusterResourceWhitelist:
     - group: '*'
       kind: '*'
@@ -20,4 +22,20 @@ spec:
       kind: '*'
   orphanedResources:
     warn: true
+    ignore:
+      - group: aquasecurity.github.io
+        kind: ConfigAuditReport
+        name: "*"
+      - group: aquasecurity.github.io
+        kind: ExposedSecretReport
+        name: "*"
+      - group: aquasecurity.github.io
+        kind: SbomReport
+        name: "*"
+      - group: aquasecurity.github.io
+        kind: VulnerabilityReport
+        name: "*"
+      - group: secrets-store.csi.x-k8s.io
+        kind: SecretProviderClassPodStatus
+        name: "*"
   syncWindows: []   # add “allow” windows later if you want time-based control

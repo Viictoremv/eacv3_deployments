@@ -197,10 +197,14 @@ echo "✅ Repos cloned and dependencies installed."
 # ------------------------------------------------------------------
 # VS Code extensions (works when connected via VS Code Remote-SSH)
 # ------------------------------------------------------------------
-code --install-extension mblode.twig-language-2         || true
-code --install-extension ms-playwright.playwright       || true
-code --install-extension ms-vscode.test-adapter-converter || true
-code --install-extension hbenl.vscode-test-explorer     || true
-code --install-extension ms-vscode.live-server          || true
+code --install-extension esbenp.prettier-vscode             || true
+code --install-extension GitHub.copilot-chat                || true
+code --install-extension GitHub.vscode-pull-request-github  || true
+code --install-extension hbenl.vscode-test-explorer         || true
+code --install-extension kisstkondoros.vscode-codemetrics   || true
+code --install-extension mblode.twig-language-2             || true
+code --install-extension ms-playwright.playwright           || true
+code --install-extension ms-vscode.live-server              || true
+code --install-extension ms-vscode.test-adapter-converter   || true
 
 banner "Done. Try:  child-phpunit --version   or   parent-phpunit --version"
